@@ -15,10 +15,14 @@ Repo Rules:
     -link: http://www.dis.uniroma1.it/challenge9/download.shtml
 3. Before each function comment what parameters it takes 
     as input and what it returns as output. 
-    Example (in python):
-    # INPUTS: training or dev filename
-    # RETURNS: target (nparray of ints) and data (list of strings)
-    def parse_file(file):
+    Example:
+    // Reads in graph from input file
+    // INPUTS: node_count - initialized to 0 
+    //         file_name - string name of file 
+    // MODIFIES: node_count - sets it equal to the number of lines in the file
+    //                which should be the number of nodes in the graph
+    // RETURNS: double pointer to 2D array of graph
+    int** readInGraph(int &node_count, const std::string &file_name);
 4. Try to keep lines to <60 characters in case we open file
     in VIM or emacs or something
 5. Try not to use namespace std (good career habit to get into)
@@ -28,3 +32,6 @@ Directories:
     -Datasets/
         This is a directory that is pretty self explanatory.
         It is comprised of the graphs for the road networks
+
+How to run files:
+-djikstras.cpp: ./<exec> <graph_input_file>
