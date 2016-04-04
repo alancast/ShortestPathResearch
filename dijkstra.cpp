@@ -1,6 +1,8 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <vector>
+#include <boost/algorithm/string.hpp>
 
 using std::cout;
 using std::endl;
@@ -58,24 +60,62 @@ int main(int argc, char** argv){
     std::string file_name = argv[1];
     int **graph = readInGraph(node_count, file_name);
     printGraph(graph, node_count);
+    cout << "Starting Dijkstras algorithm" << endl;
     dijkstra(graph, 0, node_count);
     return 0;
 }
 
 int** readInGraph(int &node_count, const std::string &file_name)
 {
+    cout << "Reading in graph from file: " << file_name << endl;
+    char temp_char;
+    std::string line;
     std::ifstream infile(file_name);
+    int **graph;
     if (infile.is_open()){
-        infile >> node_count;
-        int **graph = new int*[node_count];
-        for(int i = 0; i < node_count; ++i){
-            graph[i] = new int[node_count];
-        }
-        for (int i = 0; i < node_count; ++i)
-        {
-            for (int j = 0; j < node_count; ++j)
-            {
-                infile >> graph[i][j];
+        // Read whole file
+        while (!infile.eof()){
+            // Get first character of line
+            infile >> temp_char;
+            // Text line
+            if (temp_char == 'c'){
+                // waste the line
+                getline(infile,line);
+                // cout << line << endl;
+            }
+            // Node count and arc count line
+            else if (temp_char == 'p'){
+                getline(infile,line);
+                // cout << line << endl;
+                // currently line is in format (" sp node_count arc_cout")
+                std::vector<std::string> strs;
+                boost::split(strs, line, boost::is_any_of(" "));
+                // for (auto i = strs.begin(); i != strs.end(); ++i)
+                //     cout << *i << ' ';
+                // cout << endl;
+                node_count = atoi(strs[2].c_str());
+                cout << "Initializing matrix to 0's with " << node_count << " nodes" << endl;
+                graph = new int*[node_count];
+                for(int i = 0; i < node_count; ++i){
+                    graph[i] = new int[node_count];
+                    for (int j = 0; j < node_count; ++j)
+                    {
+                        graph[i][j] = 0;
+                    }
+                }
+            }
+            // Arc info line (node1 node2 distance)
+            else if (temp_char == 'a'){
+                int node1, node2, distance;
+                infile >> node1 >> node2 >> distance;
+                // File is 1 indexed so we must subtract one
+                graph[node1-1][node2-1] = distance;
+            }
+            // Some unkown starting character
+            else{
+                cout << "ABORTING: Saw unknown character in file\n";
+                cout << "Character was:\t" << temp_char << endl;
+                exit(2);
             }
         }
         infile.close();

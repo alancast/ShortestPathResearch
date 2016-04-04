@@ -1,7 +1,31 @@
-6
-0 4 2 0 0 0
-4 0 1 5 0 4
-2 1 0 6 9 8
-0 5 6 0 0 0
-0 0 9 0 0 0
-0 4 8 0 0 0
+c garbage line (just because actual graphs have these lines)
+c same
+c again
+c
+p sp 6 16
+c graph contains 6 nodes and 16 arcs
+c
+a 1 2 4
+a 2 1 4
+a 1 3 2
+a 3 1 2
+a 2 3 1
+a 3 2 1
+a 2 4 5
+a 4 2 5
+a 2 6 4
+a 6 2 4
+a 3 4 6
+a 4 3 6
+a 3 5 9
+a 5 3 9
+a 3 6 8
+a 6 3 8
+c Every line below this is just for debugging purposes
+c this is what the matrix should look like
+c 0 4 2 0 0 0
+c 4 0 1 5 0 4
+c 2 1 0 6 9 8
+c 0 5 6 0 0 0
+c 0 0 9 0 0 0
+c 0 4 8 0 0 0
