@@ -6,6 +6,7 @@
 #include <utility>
 #include <map>
 #include <boost/algorithm/string.hpp>
+#include <chrono>
 
 using std::cout;
 using std::cin;
@@ -53,7 +54,7 @@ void printSolution(int *dist, int node_count);
 //         node_count - row & column size of graph
 // MODIFIES: nothing
 // RETURNS: nothing
-void dijkstra(std::map<int,std::vector<std::pair<int,int> > > &graph,
+void bidirectional_dijkstra(std::map<int,std::vector<std::pair<int,int> > > &graph,
                 int node_count, int src, int dest);
 // Custom comparator for priority queue
 // INPUTS: left - pair of (node, dist) of left part
@@ -81,12 +82,23 @@ int main(int argc, char** argv){
     std::map<int,std::vector<std::pair<int,int> > > graph;
     readInGraph(graph, node_count, file_name);
     int src, dest;
-    cout << "Enter starting node: ";
-    cin >> src;
-    cout << "Enter ending node: ";
-    cin >> dest;
-    cout << "Starting Dijkstras algorithm" << endl;
-    dijkstra(graph, node_count, src, dest);
+    char temp_char = 'c';
+    while (temp_char == 'c'){
+        cout << "Enter starting node: ";
+        cin >> src;
+        cout << "Enter ending node: ";
+        cin >> dest;
+        cout << "Starting Dijkstras algorithm" << endl;
+        std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+        bidirectional_dijkstra(graph, node_count, src, dest);
+        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+        typedef std::chrono::duration<int,std::milli> millisecs_t ;
+        millisecs_t duration( std::chrono::duration_cast<millisecs_t>(end-start));
+        std::cout << "That took: " << duration.count() << " milliseconds.\n";
+        cout << "Do you want to do another pair?\n";
+        cout << "c to continue, q to quit:";
+        cin >> temp_char;
+    }
     return 0;
 }
 // ENDING MAIN
@@ -169,7 +181,7 @@ void printGraph(int **graph, int node_count)
 }
 */
 
-void dijkstra(std::map<int,std::vector<std::pair<int,int> > > &graph,
+void bidirectional_dijkstra(std::map<int,std::vector<std::pair<int,int> > > &graph,
                 int node_count, int src, int dest)
 {
     // Distance priority queue. src_dist_node[0] will hold the node with the minimum distance
@@ -282,6 +294,11 @@ void dijkstra(std::map<int,std::vector<std::pair<int,int> > > &graph,
                 && dist[dir][u]+v.second < combined_dist){
                 dist[dir][v.first] = dist[dir][u]+v.second;
                 path_info[dir][v.first] = u;
+                // Found a shorter combined path so update it
+                if (dist[!dir][v.first] != INT_MAX 
+                    && (dist[dir][v.first]+dist[!dir][v.first])<combined_dist){
+                    combined_dist = dist[dir][v.first]+dist[!dir][v.first];
+                }
                 // From SRC to Dest
                 if (dir == 0){
                     src_dist_node.push(std::make_pair(v.first, dist[dir][v.first]));

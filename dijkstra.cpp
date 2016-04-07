@@ -6,6 +6,7 @@
 #include <utility>
 #include <map>
 #include <boost/algorithm/string.hpp>
+#include <chrono>
 
 using std::cout;
 using std::cin;
@@ -81,12 +82,23 @@ int main(int argc, char** argv){
     std::map<int,std::vector<std::pair<int,int> > > graph;
     readInGraph(graph, node_count, file_name);
     int src, dest;
-    cout << "Enter starting node: ";
-    cin >> src;
-    cout << "Enter ending node: ";
-    cin >> dest;
-    cout << "Starting Dijkstras algorithm" << endl;
-    dijkstra(graph, node_count, src, dest);
+    char temp_char = 'c';
+    while (temp_char == 'c'){
+        cout << "Enter starting node: ";
+        cin >> src;
+        cout << "Enter ending node: ";
+        cin >> dest;
+        cout << "Starting Dijkstras algorithm" << endl;
+        std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+        dijkstra(graph, node_count, src, dest);
+        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+        typedef std::chrono::duration<int,std::milli> millisecs_t ;
+        millisecs_t duration( std::chrono::duration_cast<millisecs_t>(end-start));
+        std::cout << "That took: " << duration.count() << " milliseconds.\n";
+        cout << "Do you want to do another pair?\n";
+        cout << "c to continue, q to quit:";
+        cin >> temp_char;
+    }
     return 0;
 }
 // ENDING MAIN
