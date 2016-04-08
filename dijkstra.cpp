@@ -44,7 +44,15 @@ void printMap(std::map<int,std::vector<std::pair<int,int> > > &graph);
 //         node_count = length of dist array
 // MODIFIES: nothing
 // RETURNS: nothing
-void printSolution(int *dist, int node_count);
+void printDistanceArray(int *dist, int node_count);
+// Prints the solution (total distance as well as path to get there)
+// INPUTS: src - source node #
+//         dest - destination node #
+//         distance - total distance of path
+//         path_info = array of how each node was gotten to
+// MODIFIES: nothing
+// RETURNS: nothing
+void printSolution(int src, int dest, int distance, int *path_info);
 // Implements Dijkstra's single source shortest path algorithm
 // for a graph represented using adjacency matrix representation
 // INPUTS: graph - unordered map with key of source node and value of
@@ -83,6 +91,7 @@ int main(int argc, char** argv){
     readInGraph(graph, node_count, file_name);
     int src, dest;
     char temp_char = 'c';
+    typedef std::chrono::duration<int,std::milli> millisecs_t;
     while (temp_char == 'c'){
         cout << "Enter starting node: ";
         cin >> src;
@@ -92,8 +101,7 @@ int main(int argc, char** argv){
         std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
         dijkstra(graph, node_count, src, dest);
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-        typedef std::chrono::duration<int,std::milli> millisecs_t ;
-        millisecs_t duration( std::chrono::duration_cast<millisecs_t>(end-start));
+        millisecs_t duration(std::chrono::duration_cast<millisecs_t>(end-start));
         std::cout << "That took: " << duration.count() << " milliseconds.\n";
         cout << "Do you want to do another pair?\n";
         cout << "c to continue, q to quit:";
@@ -194,24 +202,25 @@ void dijkstra(std::map<int,std::vector<std::pair<int,int> > > &graph,
     // How you got to that node array. path_info[i] will hold what node got us to i
     int *path_info = new int[node_count+1];
     // visited[i] will be true if we have already computed the shortest path to it
-    bool *visited = new bool[node_count];
+    bool *visited = new bool[node_count+1];
     // Initialize all distances as INFINITE and visited[] as false
     for (int i = 0; i < node_count+1; i++){
         dist[i] = INT_MAX, visited[i] = false, path_info[i] = -1;
     }
     // Distance of source vertex from itself is always 0
     dist[src] = 0;
+    int u = 0;
     // Find shortest path to the destination vertex
-    while (visited[dest] == false){
+    while (!visited[dest]){
         // Pick the minimum distance vertex not visited
-        while (dist_node.empty() == false && visited[dist_node.top().first] == true){
+        while (!dist_node.empty() && visited[dist_node.top().first]){
             dist_node.pop();
         }
         if (dist_node.empty()){
             cout << "ABORTING: No Possible path from " << src << " to " << dest << endl;
             exit(1);
         }
-        int u = dist_node.top().first;
+        u = dist_node.top().first;
         dist_node.pop();
         // Mark the picked vertex as visited
         visited[u] = true;
@@ -219,28 +228,17 @@ void dijkstra(std::map<int,std::vector<std::pair<int,int> > > &graph,
         for (int i = 0; i < graph[u].size(); ++i)
         {
             std::pair<int, int> v = graph[u][i];
-            // Update dist[v.first] only if is not in visited, there is an edge from 
-            // u to v, and total weight of path from src to  v through u is 
-            // smaller than current value of dist[v]
-            if (visited[v.first] == false && dist[u]+v.second < dist[v.first]){
+            // Update dist[v.first] only if there is an edge from 
+            // u to v, and total weight of path from src to   
+            // v through u is smaller than current value of dist[v]
+            if (dist[u]+v.second < dist[v.first]){
                 dist[v.first] = dist[u]+v.second;
                 path_info[v.first] = u;
                 dist_node.push(std::make_pair(v.first, dist[v.first]));
             }
         }
     }
-    // Print the constructed distance array
-    // printSolution(dist, node_count);
-    // Print the shortest path from src to dest
-    cout << "The shortest path from node " << src << " to node " << dest;
-    cout << " is " << dist[dest] << endl;
-    cout << "Working backwards the path was: " << dest << " ";
-    int path_finder = dest;
-    while (path_info[path_finder] != src){
-        cout << path_info[path_finder] << " ";
-        path_finder = path_info[path_finder];
-    }
-    cout << src << endl;
+    printSolution(src, dest, dist[dest], path_info);
 }
 
 bool pair_comparator(std::pair<int, int> left, std::pair<int, int> right)
@@ -248,11 +246,25 @@ bool pair_comparator(std::pair<int, int> left, std::pair<int, int> right)
     return left.second >= right.second;
 }
 
-void printSolution(int *dist, int node_count)
+void printDistanceArray(int *dist, int node_count)
 {
     cout<<"Vertex\tDistance from Source\n";
     for (int i = 0; i < node_count; i++)
         cout<<i<<"\t\t"<<dist[i]<<endl;
+}
+
+void printSolution(int src, int dest, int distance, int *path_info)
+{
+    // Print the shortest path from src to dest
+    cout << "The shortest path from node " << src << " to node " << dest;
+    cout << " is " << distance << endl;
+    // cout << "Working backwards the path was: " << dest << " ";
+    // int path_finder = dest;
+    // while (path_info[path_finder] != src){
+    //     cout << path_info[path_finder] << " ";
+    //     path_finder = path_info[path_finder];
+    // }
+    // cout << src << endl;
 }
 
 void printMap(std::map<int,std::vector<std::pair<int,int> > > &graph)

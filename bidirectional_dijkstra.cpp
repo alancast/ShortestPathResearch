@@ -223,81 +223,142 @@ void bidirectional_dijkstra(std::map<int,std::vector<std::pair<int,int> > > &gra
     // Will be 0 when going from src to dest
     // Will be 1 when going from dest to src
     int dir = 0;
+    // Shortest known distance of path 
+    // Combination of dest to point and source to point
     int combined_dist = INT_MAX;
+    // Used for vertex we are analyzing in the loop
+    int u = 0;
+    // Will be set to true if we "visited" a node coming from each direction
+    bool found_in_each = false;
     while (!src_finished || !dest_finished){
-        dir %= 2;
-        int u = 0;
-        // Pick the minimum distance vertex not visited
-        // From SRC to Dest
-        if (dir == 0){
-            while (src_dist_node.empty() == false && visited[dir][src_dist_node.top().first] == true){
+        // As soon as you have found one in each you know that you can't
+        // Add anything else to the queue so just check through all them
+        // Until you find the shortest path
+        if (found_in_each){
+            while (!src_dist_node.empty()){
+                int node_num = src_dist_node.top().first;
+                if (dist[1][node_num] != INT_MAX){
+                    if (dist[0][node_num] + dist[1][node_num] < combined_dist){
+                        combined_dist = dist[0][node_num] + dist[1][node_num];
+                    }
+                }
                 src_dist_node.pop();
             }
-            if (src_dist_node.empty()){
-                // All possible paths from src have been exhausted
-                if (src_finished){
-                    dir++;
-                    continue;
+            while (!dest_dist_node.empty()){
+                int node_num = dest_dist_node.top().first;
+                if (dist[0][node_num] != INT_MAX){
+                    if (dist[0][node_num] + dist[1][node_num] < combined_dist){
+                        combined_dist = dist[0][node_num] + dist[1][node_num];
+                    }
                 }
-                if (combined_dist != INT_MAX){
-                    cout << "SRC searching is done!" << endl;
-                    src_finished = true;
-                    dir++;
-                    continue;
-                }
-                cout << "ABORTING: No Possible path from " << src << " to " << dest << endl;
-                exit(1);
+                dest_dist_node.pop();
             }
-            u = src_dist_node.top().first;
+            src_finished = true;
+            dest_finished = true;
+            continue;
+        }
+        // Pick the minimum distance vertex not visited (from either queue)
+        // From SRC to Dest
+        while (!src_dist_node.empty() && 
+            (visited[0][src_dist_node.top().first] 
+                || src_dist_node.top().second > combined_dist)){
             src_dist_node.pop();
         }
         // From dest to src
-        else{
-            while (dest_dist_node.empty() == false && visited[dir][dest_dist_node.top().first] == true){
-                dest_dist_node.pop();
+        while (!dest_dist_node.empty() && 
+            (visited[1][dest_dist_node.top().first] 
+                || dest_dist_node.top().second > combined_dist)){
+            dest_dist_node.pop();
+        }
+        if (src_dist_node.empty()){
+            // All possible paths from src have been exhausted
+            if (src_finished){
+                dir = 1;
             }
-            if (dest_dist_node.empty()){
-                // All possible paths from dest have been exhausted
-                if (dest_finished){
-                    dir++;
-                    continue;
-                }
-                if (combined_dist != INT_MAX){
-                    cout << "Dest searching is done!" << endl;
-                    dest_finished = true;
-                    dir++;
-                    continue;
-                }
+            else if (combined_dist != INT_MAX){
+                cout << "SRC searching is done!" << endl;
+                src_finished = true;
+                dir = 1;
+            }
+            else{
+                cout << "ABORTING: No Possible path from " << src << " to " << dest << endl;
+                exit(1);
+            }
+        }
+        if (dest_dist_node.empty()){
+            // All possible paths from dest have been exhausted
+            if (dest_finished){
+                dir = 0;
+            }
+            else if (combined_dist != INT_MAX){
+                cout << "Dest searching is done!" << endl;
+                dest_finished = true;
+                dir = 0;
+            }
+            else{
                 cout << "ABORTING: No Possible path from " << dest << " to " << src << endl;
                 exit(1);
             }
+        }
+        // Figure out which scenario we are in (what queue to pop from)
+        // Pick from whichever is lower (this will happen 99% of time)
+        if (!src_finished && !dest_finished){
+            // Source has lower distance than destination so choose from it
+            if (src_dist_node.top().second <= dest_dist_node.top().second){
+                u = src_dist_node.top().first;
+                src_dist_node.pop();
+                dir = 0;
+            }
+            // Destination has lower distance than source so choose from it
+            else{
+                u = dest_dist_node.top().first;
+                dest_dist_node.pop();
+                dir = 1;
+            }
+        }
+        // Dest is finished so only go from source
+        else if (!src_finished && dest_finished){
+            u = src_dist_node.top().first;
+            src_dist_node.pop();
+            dir = 0;
+        }
+        // Source is finished so only go from dest
+        else if (src_finished && !dest_finished){
             u = dest_dist_node.top().first;
             dest_dist_node.pop();
+            dir = 1;
+        }
+        // both are done so continue
+        else{
+            continue;
         }
         // Mark the picked vertex as visited
         visited[dir][u] = true;
+        // As soon as you have found one in each you know that you can't
+        // Add anything else to the queue so just check through all them
+        // Until you find the shortest path
+        if (visited[!dir][u]){
+            if (dist[!dir][u] + dist[dir][u] < combined_dist){
+                combined_dist = dist[!dir][u] + dist[dir][u];
+            }
+            found_in_each = true;
+            continue;
+        }
         // Update dist value of the adjacent vertices of the picked vertex.
         for (int i = 0; i < graph[u].size(); ++i)
         {
-            // Can only happen in bidirectional, added a point to the queue 
-            // That is now impossible to be the shortest path because 
-            // A shorter combined distance was found in between
-            // Breaking out just saves a little bit of time
-            if (dist[dir][u] > combined_dist){
-                break;
-            }
             std::pair<int, int> v = graph[u][i];
-            // Update dist[dir][v.first] only if is not in visited, there is an edge from 
-            // u to v, and total weight of path from src to  v through u is 
+            // Update dist[dir][v.first] only if there is an edge from 
+            // u to v, and total weight of path from src to v through u is 
             // smaller than current value of dist[dir][v]
-            if (visited[dir][v.first] == false && dist[dir][u]+v.second < dist[dir][v.first]
-                && dist[dir][u]+v.second < combined_dist){
+            if (dist[dir][u] + v.second < dist[dir][v.first]
+                && dist[dir][u] + v.second < combined_dist){
                 dist[dir][v.first] = dist[dir][u]+v.second;
                 path_info[dir][v.first] = u;
-                // Found a shorter combined path so update it
-                if (dist[!dir][v.first] != INT_MAX 
-                    && (dist[dir][v.first]+dist[!dir][v.first])<combined_dist){
-                    combined_dist = dist[dir][v.first]+dist[!dir][v.first];
+                // Potentially reducing combined distance
+                if (dist[!dir][v.first] != INT_MAX &&
+                    (dist[dir][v.first] + dist[!dir][v.first])<combined_dist){
+                    combined_dist = dist[dir][v.first] + dist[!dir][v.first];
                 }
                 // From SRC to Dest
                 if (dir == 0){
@@ -309,21 +370,6 @@ void bidirectional_dijkstra(std::map<int,std::vector<std::pair<int,int> > > &gra
                 }
             }
         }
-        // Found path from one to the other but might not be done because
-        // could still find a cutoff point that will make combined distance shorter
-        if (visited[0][dest] == true){
-            src_finished = true;
-            if (dist[0][dest] < combined_dist){
-                combined_dist = dist[0][dest];
-            }
-        }
-        if (visited[1][src] == true){
-            dest_finished = true;
-            if (dist[1][src] < combined_dist){
-                combined_dist = dist[1][src];
-            }
-        }
-        dir++;
     }
     // Print the constructed distance array
     // printSolution(dist, node_count);
