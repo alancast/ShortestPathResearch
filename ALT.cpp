@@ -126,6 +126,7 @@ class ALT_Class
         static int dest;
         // std::unordered_set<int> open_set;
         std::unordered_set<int> closed_set;
+        int landmark_index = 0;
 
     public:
         // void set_dest(int input_dest)
@@ -146,6 +147,9 @@ class ALT_Class
         void alt_alg(int node_count, int src, int dest);
 
         double heuristic_cost_estimate(int start, int dest);
+
+        void choose_landmark_index(int src, int dest);
+
 
         class alt_comparator
         {
@@ -217,20 +221,50 @@ int main(int argc, char** argv){
     // print_all_coords(graph_coords);
     ALT_Class alt_inst;
 
-    // alt_inst.set_dest(45);
-
     alt_inst.get_landmarks(8);
-
-    // alt_inst.print_landmarks();
 
     alt_inst.get_dist_btw_landmarks();
 
-    // alt_inst.print_land_mark_distances();
-
-    alt_inst.alt_alg(graph_coords.size(), 5, 8000);
-
     int src, dest;
 
+    char temp_char = 'c';
+    while (temp_char == 'c'){
+        char which_algos_char;
+        cout << "Do you want to do both Dijkstras or only one?\n";
+        cout << "1 for 1 directional only, 2 for bidirectional only, b for both:, 3 for ALT";
+        cin >> which_algos_char;
+        cout << "Enter starting node: ";
+        cin >> src;
+        cout << "Enter ending node: ";
+        cin >> dest;
+        if (which_algos_char == '1' || which_algos_char == 'b'){
+            cout << "Starting Dijkstras algorithm" << endl;
+            // dijkstra(graph, node_count, src, dest);
+        }
+        if (which_algos_char == '2' || which_algos_char == 'b'){
+            cout << "Starting Bidirectional Dijkstras algorithm" << endl;
+            // bidirectional_dijkstra(graph, node_count, src, dest);
+        }
+        if (which_algos_char == '3')
+        {
+            cout << "Starting ALT algorithm" << endl;
+            alt_inst.alt_alg(graph_coords.size(), src, dest);
+        }
+        cout << "Do you want to do another pair?\n";
+        cout << "c to continue, q to quit:";
+        cin >> temp_char;
+    }
+
+    // alt_inst.set_dest(45);
+
+
+
+    // alt_inst.print_landmarks();
+
+
+    // alt_inst.print_land_mark_distances();
+
+    
     return 0;
 }
 // ENDING MAIN
@@ -395,15 +429,15 @@ void ALT_Class::get_landmarks(int k)
             double average_dist = total_dist/landmarks.size();
             if(average_dist > cur_furthest_avg)
             {
-                cout << "avg distance_to_node is: " << average_dist << endl;
-                cout << "cur_furthest_dist is: " << cur_furthest_avg << endl;
+                // cout << "avg distance_to_node is: " << average_dist << endl;
+                // cout << "cur_furthest_dist is: " << cur_furthest_avg << endl;
                 cur_furthest_avg = average_dist;
                 cur_furthest_node = j;
             }
         }
 
 
-        cout << "Node " << cur_furthest_node << " is being inserted" << endl;
+        // cout << "Node " << cur_furthest_node << " is being inserted" << endl;
         landmarks.insert(cur_furthest_node);
     }
 }
@@ -571,6 +605,8 @@ void ALT_Class::alt_alg(int node_count, int src, int dest)
         path_info[i] = -1;
     }
 
+    choose_landmark_index(src, dest);
+
     std::unordered_set<int> nodes_in_open_set;
     g_score[src] = 0;
     f_score[src] = heuristic_cost_estimate(src, dest);
@@ -637,12 +673,51 @@ void ALT_Class::alt_alg(int node_count, int src, int dest)
             
         }
     }
+}
+
+void ALT_Class::choose_landmark_index(int src, int dest)
+{
+    double max_heur = INT_MIN;
+    double max_index = 0;
+    for (int i = 0; i < land_dist[src].size(); ++i)
+    {
+        double start_dist_land = land_dist[src][i].second;
+        double dest_dist_land = land_dist[dest][i].second; 
+        double total_dist = std::abs(start_dist_land - dest_dist_land);
+        if(total_dist > max_heur)
+        {
+            max_heur = total_dist;
+            max_index = i;
+        }
+
+    }
+
+    landmark_index = max_index;
 
 }
+
 
 double ALT_Class::heuristic_cost_estimate(int start, int dest)
 {
-    double start_dist_land = land_dist[start][0].second;
-    double dest_dist_land = land_dist[dest][0].second; 
-    return std::abs(start_dist_land - dest_dist_land);
+    // double max_heur = INT_MIN;
+    // for (int i = 0; i < land_dist[start].size(); ++i)
+    // {
+    //     double start_dist_land = land_dist[start][i].second;
+    //     double dest_dist_land = land_dist[dest][i].second; 
+    //     double total_dist = std::abs(start_dist_land - dest_dist_land);
+    //     if(total_dist > max_heur)
+    //     {
+    //         max_heur = total_dist;
+    //     }
+
+    // }
+    
+    // return max_heur;
+
+
+    double start_dist_land = land_dist[start][landmark_index].second;
+    double dest_dist_land = land_dist[dest][landmark_index].second; 
+    double total_dist = std::abs(start_dist_land - dest_dist_land);
+    return total_dist;
 }
+
