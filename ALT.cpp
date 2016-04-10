@@ -6,6 +6,7 @@
 #include <utility>
 #include <map>
 #include <set>
+#include <unordered_set>
 #include <boost/algorithm/string.hpp>
 #include <chrono>
 #include <math.h>
@@ -120,9 +121,11 @@ std::vector<std::pair<int,int> > graph_coords; //after reading in coordinates wi
 class ALT_Class
 {
     private:
-        std::set<int> landmarks;
+        std::unordered_set<int> landmarks;
         static std::map<int, std::vector<std::pair<int, double> > >  land_dist;
         static int dest;
+        // std::unordered_set<int> open_set;
+        std::unordered_set<int> closed_set;
 
     public:
         // void set_dest(int input_dest)
@@ -142,6 +145,8 @@ class ALT_Class
 
         void alt_alg(int node_count, int src, int dest);
 
+        double heuristic_cost_estimate(int start, int dest);
+
         class alt_comparator
         {
             public:
@@ -155,7 +160,7 @@ class ALT_Class
                     double max_left_heur = INT_MIN;
                     double max_right_heur = INT_MIN;
 
-                    for (int i = 0; i < land_dist[left_node].size(); ++i)
+                    for (int i = 0; i < 1; ++i)
                     {
                         int land_mark_node = land_dist[left_node][i].first;
                         int left_dist_land = land_dist[left_node][i].second;
@@ -164,8 +169,8 @@ class ALT_Class
 
                         int dest_dist_land = land_dist[dest][i].second;
 
-                        int total_left = left_dist_land + dest_dist_land;
-                        int total_right = right_dist_land + dest_dist_land;
+                        int total_left = abs(left_dist_land - dest_dist_land);
+                        int total_right = abs(right_dist_land + dest_dist_land);
 
                         if(total_left > max_left_heur)
                         {
@@ -182,10 +187,9 @@ class ALT_Class
         };
 
         private:
-            std::priority_queue<std::pair<int,int>, 
-            std::vector<std::pair<int, int> >, 
-            alt_comparator > dist_node;
-
+            // std::priority_queue<std::pair<int,int>, 
+            // std::vector<std::pair<int, int> >, 
+            // alt_comparator > dist_node;
 
 
 
@@ -217,11 +221,11 @@ int main(int argc, char** argv){
 
     alt_inst.get_landmarks(8);
 
-    alt_inst.print_landmarks();
+    // alt_inst.print_landmarks();
 
     alt_inst.get_dist_btw_landmarks();
 
-    alt_inst.print_land_mark_distances();
+    // alt_inst.print_land_mark_distances();
 
     alt_inst.alt_alg(graph_coords.size(), 5, 8000);
 
@@ -478,18 +482,6 @@ double distance_btw_coords(std::pair<int,int> coord_1, std::pair<int,int> coord_
 
 void ALT_Class::get_dist_btw_landmarks()
 {
-    // land_dist.resize(1);
-    // for(int i = 1; i < graph_coords.size(); ++i)
-    // {
-    //     std::vector<std::pair<int, double> > temp_vector;
-    //     for (auto it = landmarks.begin(); it != landmarks.end(); it++)
-    //     {
-    //         int land_mark_node = *it;
-    //         double dist_between = distance_btw_coords(graph_coords[land_mark_node], graph_coords[i]);
-    //         temp_vector.push_back(std::make_pair(land_mark_node, dist_between));
-    //     }
-    //     land_dist.push_back(temp_vector);
-    // }
 
     for (auto it = landmarks.begin(); it != landmarks.end(); it++)
     {
@@ -562,101 +554,95 @@ void dijkstra(std::map<int,std::vector<std::pair<int,int> > > &graph,
     }
 }
 
-// bool ALT_Class::alt_comparator(std::pair<int, int> left, std::pair<int, int> right)
-// {
-//     int left_node = left.first;
-//     int right_node = right.first;
-//     double left_est = left.second;
-//     double right_est = right.second;
-
-//     double max_left_heur = INT_MIN;
-//     double max_right_heur = INT_MIN;
-
-//     for (int i = 0; i < land_dist[left_node].size(); ++i)
-//     {
-//         int land_mark_node = land_dist[left_node][i].first;
-//         int left_dist_land = land_dist[left_node][i].second;
-
-//         int right_dist_land = land_dist[right_node][i].second;
-
-//         int dest_dist_land = land_dist[dest][i].second;
-
-//         int total_left = left_dist_land + dest_dist_land;
-//         int total_right = right_dist_land + dest_dist_land;
-
-//         if(total_left > max_left_heur)
-//         {
-//             max_left_heur = total_left;
-//         }
-
-//         if(total_right > max_right_heur)
-//         {
-//             max_right_heur = total_right;
-//         }
-//     }
-
-
-//     return max_left_heur >= max_right_heur;
-// }
-
 
 void ALT_Class::alt_alg(int node_count, int src, int dest)
 {
-    // For timing purposes only
+
+    //For timing purposes only
     typedef std::chrono::duration<int,std::milli> millisecs_t;
     std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
-    // Distance priority queue. dist_node[0] will hold the node with the minimum distance
 
-    this->dest = dest;
-
-    dist_node.push(std::make_pair(src, 0));
-    // Distance array. dist[i] will hold the shortest distance from src to i
-    int *dist = new int[node_count+1];
-    // How you got to that node array. path_info[i] will hold what node got us to i
+    int *g_score = new int[node_count+1];
+    int *f_score = new int[node_count+1];
     int *path_info = new int[node_count+1];
-    // visited[i] will be true if we have already computed the shortest path to it
-    bool *visited = new bool[node_count+1];
-    // Initialize all distances as INFINITE and visited[] as false
     for (int i = 0; i < node_count+1; i++){
-        dist[i] = INT_MAX, visited[i] = false, path_info[i] = -1;
+        g_score[i] = INT_MAX;
+        f_score[i] = INT_MAX;
+        path_info[i] = -1;
     }
-    // Distance of source vertex from itself is always 0
-    dist[src] = 0;
-    int u = 0;
-    // Find shortest path to the destination vertex
-    while (!visited[dest]){
-        // Pick the minimum distance vertex not visited
-        while (!dist_node.empty() && visited[dist_node.top().first]){
-            dist_node.pop();
-        }
-        if (dist_node.empty()){
-            cout << "ABORTING: No Possible path from " << src << " to " << dest << endl;
-            exit(1);
-        }
-        u = dist_node.top().first;
-        dist_node.pop();
-        // Mark the picked vertex as visited
-        visited[u] = true;
-        // Update dist value of the adjacent vertices of the picked vertex.
-        for (int i = 0; i < graph[u].size(); ++i)
+
+    std::unordered_set<int> nodes_in_open_set;
+    g_score[src] = 0;
+    f_score[src] = heuristic_cost_estimate(src, dest);
+
+    std::priority_queue<std::pair<int,int>, 
+            std::vector<std::pair<int, int> >, 
+            std::function<bool(std::pair<int,int>, std::pair<int,int>)> > open_set(pair_comparator);
+
+    open_set.push(std::make_pair(src, f_score[src]));
+
+    nodes_in_open_set.insert(src);
+    
+
+    while(!open_set.empty())
+    {
+        int current = open_set.top().first;
+        int cur_f_score = open_set.top().second;
+
+        if(current == dest)
         {
-            std::pair<int, int> v = graph[u][i];
+            // Again for timing purposes only
+            printSolution(src, dest, g_score[dest], path_info);
+            std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+            millisecs_t duration(std::chrono::duration_cast<millisecs_t>(end-start));
+            std::cout << "That took: " << duration.count() << " milliseconds.\n";
+            return;
+        }
+
+        open_set.pop();
+        nodes_in_open_set.erase(current);
+        closed_set.insert(current);
+
+        for (int i = 0; i < graph[current].size(); ++i)
+        {
+            std::pair<int, int> v = graph[current][i];
+
+            int neighbor = v.first;
+            int dist_to_neighb = v.second;
             // Update dist[v.first] only if there is an edge from 
             // u to v, and total weight of path from src to   
             // v through u is smaller than current value of dist[v]
-            if (dist[u]+v.second < dist[v.first]){
-                dist[v.first] = dist[u]+v.second;
-                path_info[v.first] = u;
-                dist_node.push(std::make_pair(v.first, dist[v.first]));
+
+            if(closed_set.find(neighbor) != closed_set.end())
+            {
+                continue;
             }
+
+            int tentative_g_score = g_score[current] + dist_to_neighb;
+
+            if(tentative_g_score >= g_score[neighbor])
+            {
+                continue;
+            }
+            
+            path_info[neighbor] = current;
+            g_score[neighbor] = tentative_g_score;
+            f_score[neighbor] = g_score[neighbor] + heuristic_cost_estimate(neighbor, dest);
+            if(nodes_in_open_set.find(neighbor) == nodes_in_open_set.end())
+            {
+                open_set.push(std::make_pair(neighbor, f_score[neighbor]));
+                nodes_in_open_set.insert(neighbor);
+            }
+            
+            
         }
     }
-    printSolution(src, dest, dist[dest], path_info);
-    // Again for timing purposes only
-    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    millisecs_t duration(std::chrono::duration_cast<millisecs_t>(end-start));
-    std::cout << "That took: " << duration.count() << " milliseconds.\n";
 
 }
 
-
+double ALT_Class::heuristic_cost_estimate(int start, int dest)
+{
+    double start_dist_land = land_dist[start][0].second;
+    double dest_dist_land = land_dist[dest][0].second; 
+    return std::abs(start_dist_land - dest_dist_land);
+}
