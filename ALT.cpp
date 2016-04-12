@@ -612,92 +612,61 @@ void dijkstra(std::map<int,std::vector<std::pair<int,int> > > &graph,
 
 void ALT_Class::alt_alg(int node_count, int src, int dest)
 {
-
-    //For timing purposes only
+    // For timing purposes only
     typedef std::chrono::duration<int,std::milli> millisecs_t;
     std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
-
-    g_score = new int[node_count+1];
-    f_score = new int[node_count+1];
-    path_info = new int[node_count+1];
-    for (int i = 0; i < node_count+1; i++){
-        g_score[i] = INT_MAX;
-        f_score[i] = INT_MAX;
-        path_info[i] = -1;
-    }
-
-    choose_landmark_index(src, dest);
-
-    std::unordered_set<int> nodes_in_open_set;
-    g_score[src] = 0;
-    f_score[src] = heuristic_cost_estimate(src, dest);
-
+    // Distance priority queue. dist_node[0] will hold the node with the minimum distance
     std::priority_queue<std::pair<int,int>, 
             std::vector<std::pair<int, int> >, 
-            std::function<bool(std::pair<int,int>, std::pair<int,int>)> > open_set(pair_comparator);
-
-    open_set.push(std::make_pair(src, f_score[src]));
-
-    nodes_in_open_set.insert(src);
-    
-    closed_set.clear();
-
-    while(!open_set.empty())
-    {
-        int current = open_set.top().first;
-        int cur_f_score = open_set.top().second;
-
-        if(closed_set.find(current) != closed_set.end())
-        {
-            open_set.pop();
-            continue;
+            std::function<bool(std::pair<int,int>, std::pair<int,int>)> > dist_node(pair_comparator);
+    dist_node.push(std::make_pair(src, 0));
+    // Distance array. dist[i] will hold the shortest distance from src to i
+    int *dist = new int[node_count+1];
+    // How you got to that node array. path_info[i] will hold what node got us to i
+    int *path_info = new int[node_count+1];
+    // visited[i] will be true if we have already computed the shortest path to it
+    bool *visited = new bool[node_count+1];
+    // Initialize all distances as INFINITE and visited[] as false
+    for (int i = 0; i < node_count+1; i++){
+        dist[i] = INT_MAX, visited[i] = false, path_info[i] = -1;
+    }
+    // Distance of source vertex from itself is always 0
+    dist[src] = 0;
+    int u = 0;
+    // Find shortest path to the destination vertex
+    while (!visited[dest]){
+        // Pick the minimum distance vertex not visited
+        while (!dist_node.empty() && visited[dist_node.top().first]){
+            dist_node.pop();
         }
-        
-        if(current == dest)
-        {
-            // Again for timing purposes only
-            printSolution(src, dest, g_score[dest], path_info);
-            std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-            millisecs_t duration(std::chrono::duration_cast<millisecs_t>(end-start));
-            std::cout << "That took: " << duration.count() << " milliseconds.\n";
-            return;
+        if (dist_node.empty()){
+            cout << "ABORTING: No Possible path from " << src << " to " << dest << endl;
+            exit(1);
         }
-
-        open_set.pop();
-        nodes_in_open_set.erase(current);
-        closed_set.insert(current);
-
-        for (int i = 0; i < graph[current].size(); ++i)
+        u = dist_node.top().first;
+        dist_node.pop();
+        // Mark the picked vertex as visited
+        visited[u] = true;
+        // Update dist value of the adjacent vertices of the picked vertex.
+        for (int i = 0; i < graph[u].size(); ++i)
         {
-            std::pair<int, int> v = graph[current][i];
-
-            int neighbor = v.first;
-            int dist_to_neighb = v.second;
+            std::pair<int, int> v = graph[u][i];
             // Update dist[v.first] only if there is an edge from 
             // u to v, and total weight of path from src to   
             // v through u is smaller than current value of dist[v]
-
-            if(closed_set.find(neighbor) != closed_set.end())
-            {
-                continue;
+            if (dist[u]+v.second < dist[v.first]){
+                dist[v.first] = dist[u]+v.second;
+                int heuristic = dist[v.first] + heuristic_cost_estimate(v.first, dest);
+                path_info[v.first] = u;
+                dist_node.push(std::make_pair(v.first, heuristic));
             }
-
-            int tentative_g_score = g_score[current] + dist_to_neighb;
-
-            if(tentative_g_score >= g_score[neighbor])
-            {
-                continue;
-            }
-            
-            path_info[neighbor] = current;
-            g_score[neighbor] = tentative_g_score;
-            f_score[neighbor] = g_score[neighbor] + heuristic_cost_estimate(neighbor, dest);
-
-
-            open_set.push(std::make_pair(neighbor, f_score[neighbor]));
-            nodes_in_open_set.insert(neighbor);            
         }
     }
+    printSolution(src, dest, dist[dest], path_info);
+    // Again for timing purposes only
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    millisecs_t duration(std::chrono::duration_cast<millisecs_t>(end-start));
+    std::cout << "That took: " << duration.count() << " milliseconds.\n";
 }
 
 void ALT_Class::choose_landmark_index(int src, int dest)
@@ -740,224 +709,157 @@ double ALT_Class::heuristic_cost_estimate(int start, int dest)
     return max_heur;
 
 
-    // double start_dist_land = land_dist[start][landmark_index].second;
-    // double dest_dist_land = land_dist[dest][landmark_index].second; 
+    // double start_dist_land = land_dist[start][0].second;
+    // double dest_dist_land = land_dist[dest][0].second; 
     // double total_dist = std::abs(start_dist_land - dest_dist_land);
     // return total_dist;
 }
 
 void ALT_Class::bi_alt_alg(int node_count, int src, int dest)
 {
-
-    //For timing purposes only
+    // For timing purposes only
     typedef std::chrono::duration<int,std::milli> millisecs_t;
     std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
-
-    int *g_score_f = new int[node_count+1];
-    int *f_score_f = new int[node_count+1];
-    int *path_info_f = new int[node_count+1];
-    int *g_score_b = new int[node_count+1];
-    int *f_score_b = new int[node_count+1];
-    int *path_info_b = new int[node_count+1];
-
+    // Distance priority queue. src_dist_node[0] will hold the node with the minimum distance
+    // This one is from src to destination
+    std::priority_queue<std::pair<int,int>, 
+            std::vector<std::pair<int, int> >, 
+            std::function<bool(std::pair<int,int>, std::pair<int,int>)> > src_dist_node(pair_comparator);
+    src_dist_node.push(std::make_pair(src, 0));
+    // Distance priority queue. dest_dist_node[0] will hold the node with the minimum distance
+    // This one is from destination to src
+    std::priority_queue<std::pair<int,int>, 
+            std::vector<std::pair<int, int> >, 
+            std::function<bool(std::pair<int,int>, std::pair<int,int>)> > dest_dist_node(pair_comparator);
+    dest_dist_node.push(std::make_pair(dest, 0));
+    // Distance array. dist[x][i] will hold the shortest distance from start to i
+    int **dist = new int*[2];
+    dist[0] = new int[node_count+1];
+    dist[1] = new int[node_count+1];
+    // Heuristic array. heuristic[x][i] will hold the shortest distance from start to i
+    int **heuristic = new int*[2];
+    heuristic[0] = new int[node_count+1];
+    heuristic[1] = new int[node_count+1];
+    // How you got to that node array. path_info[x][i] will hold what node got us to i
+    int **path_info = new int*[2];
+    path_info[0] = new int[node_count+1];
+    path_info[1] = new int[node_count+1];
     int *final_path_info = new int[node_count+1];
+    // visited[x][i] will be true if we have already computed the shortest path to it
+    bool **visited = new bool*[2];
+    visited[0] = new bool[node_count+1];
+    visited[1] = new bool[node_count+1];
+    // Initialize all distances as INFINITE and visited[x][i] as false
     for (int i = 0; i < node_count+1; i++){
-        g_score_f[i] = INT_MAX;
-        f_score_f[i] = INT_MAX;
-        path_info_f[i] = -1;
-        g_score_b[i] = INT_MAX;
-        f_score_b[i] = INT_MAX;
-        path_info_b[i] = -1;
+        dist[0][i] = INT_MAX, visited[0][i] = false, path_info[0][i] = -1;
+        dist[1][i] = INT_MAX, visited[1][i] = false, path_info[1][i] = -1;
         final_path_info[i] = -1;
     }
-
-    choose_landmark_index(src, dest);
-
-    
-    g_score_f[src] = 0;
-    f_score_f[src] = heuristic_cost_estimate(src, dest);
-
-    g_score_b[dest] = 0;
-    f_score_b[dest] = heuristic_cost_estimate(dest, src);
-
-    std::priority_queue<std::pair<int,int>, 
-            std::vector<std::pair<int, int> >, 
-            std::function<bool(std::pair<int,int>, std::pair<int,int>)> > open_set_f(pair_comparator);
-
-    std::priority_queue<std::pair<int,int>, 
-            std::vector<std::pair<int, int> >, 
-            std::function<bool(std::pair<int,int>, std::pair<int,int>)> > open_set_b(pair_comparator);
-
-    std::unordered_set<int> nodes_in_open_set_f;
-    std::unordered_set<int> nodes_in_open_set_b;
-
-    open_set_f.push(std::make_pair(src, f_score_f[src]));
-    open_set_b.push(std::make_pair(dest, f_score_b[dest]));
-
-    nodes_in_open_set_f.insert(src);
-    nodes_in_open_set_b.insert(dest);
-
-    closed_set_f.clear();
-    closed_set_b.clear();
-    
-    bool found_in_each = false;
-
-    bool forward = false;
-
+    // Distance of source vertex from itself is always 0
+    dist[0][src] = 0;
+    dist[1][dest] = 0;
+    // Will be 0 when going from src to dest
+    // Will be 1 when going from dest to src
+    int dir = 0;
+    // Shortest known distance of path 
+    // Combination of dest to point and source to point
     int combined_dist = INT_MAX;
+    // Used for vertex we are analyzing in the loop
+    int u = 0;
+    // Will be set to true if we "visited" a node coming from each direction
+    bool found_in_each = false;
+    bool finished_dest = false;
+    bool finished_src = false;
+    // What node was the crossover node
     int crossover_node = -1;
-
-
-    while(!found_in_each)
-    {
-        int current = 0;
-        int cur_f_score = 0;
-        if(open_set_f.top().second <= open_set_b.top().second)
+    while (!finished_dest || !finished_src){
+        // Pick the minimum distance vertex not visited (from either queue)
+        // From SRC to Dest
+        while (!src_dist_node.empty() && visited[0][src_dist_node.top().first]){
+            src_dist_node.pop();
+        }
+        // From dest to src
+        while (!dest_dist_node.empty() && visited[1][dest_dist_node.top().first]){
+            dest_dist_node.pop();
+        }
+        // Again this assumes that roads go both directions
+        if (src_dist_node.empty() || dest_dist_node.empty()){
+            // All possible paths have been exhausted and none was found
+            cout << "ABORTING: No Possible path from " << src << " to " << dest << endl;
+            exit(1);
+        }
+        // Pick from whichever is lower
+        // Source has lower distance than destination so choose from it
+        if (src_dist_node.top().second <= dest_dist_node.top().second){
+            u = src_dist_node.top().first;
+            src_dist_node.pop();
+            dir = 0;
+        }
+        // Destination has lower distance than source so choose from it
+        else{
+            u = dest_dist_node.top().first;
+            dest_dist_node.pop();
+            dir = 1;
+        }
+        // Mark the picked vertex as visited
+        visited[dir][u] = true;
+        // As soon as you have found one in each you know that you can't
+        // Add anything else to the queue so just check through all them
+        // Until you find the shortest path
+        if (visited[!dir][u] && !found_in_each){
+            combined_dist = dist[!dir][u] + dist[dir][u];
+            found_in_each = true;
+            crossover_node = u;
+        }
+        else if (visited[!dir][u] && (heuristic[dir][u] > combined_dist)){
+            if (dir == 0){
+                finished_src = true;
+            }
+            else{
+                finished_dest = true;
+            }
+            continue;
+        }
+        else if (found_in_each && visited[!dir][u] &&
+            (dist[!dir][u] + dist[dir][u]) < combined_dist){
+            combined_dist = dist[!dir][u] + dist[dir][u];
+            crossover_node = u;
+        }
+        // Update dist value of the adjacent vertices of the picked vertex.
+        for (int i = 0; i < graph[u].size(); ++i)
         {
-            current = open_set_f.top().first;
-            cur_f_score = open_set_f.top().second;
-            if(closed_set_b.find(current) != closed_set_b.end())
-            {
-                combined_dist = g_score_f[current] + g_score_b[current];
-                crossover_node = current;
-                break;
-            }
-            open_set_f.pop();
-            nodes_in_open_set_f.erase(current);
-            closed_set_f.insert(current);
-            forward = true;
-        }
-        else
-        {
-            current = open_set_b.top().first;
-            cur_f_score = open_set_b.top().second;
-            if(closed_set_f.find(current) != closed_set_f.end())
-            {
-                combined_dist = g_score_f[current] + g_score_b[current];
-                crossover_node = current;
-                break;
-            }
-            open_set_b.pop();
-            nodes_in_open_set_b.erase(current);
-            closed_set_b.insert(current);
-            forward = false;
-        }
-
-        // if(current == dest)
-        // {
-        //     // Again for timing purposes only
-        //     printSolution(src, dest, g_score_f[dest], path_info_f);
-        //     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-        //     millisecs_t duration(std::chrono::duration_cast<millisecs_t>(end-start));
-        //     std::cout << "That took: " << duration.count() << " milliseconds.\n";
-        //     return;
-        // }
-
-        
-        if(forward)
-        {
-            for (int i = 0; i < graph[current].size(); ++i)
-            {
-                std::pair<int, int> v = graph[current][i];
-
-                int neighbor = v.first;
-                int dist_to_neighb = v.second;
-                // Update dist[v.first] only if there is an edge from 
-                // u to v, and total weight of path from src to   
-                // v through u is smaller than current value of dist[v]
-
-                if(closed_set_f.find(neighbor) != closed_set_f.end())
-                {
-                    continue;
+            std::pair<int, int> v = graph[u][i];
+            // Update dist[dir][v.first] only if there is an edge from 
+            // u to v, and total weight of path from src to v through u is 
+            // smaller than current value of dist[dir][v]
+            if (dist[dir][u] + v.second < dist[dir][v.first]){
+                dist[dir][v.first] = dist[dir][u]+v.second;
+                heuristic[dir][v.first] = dist[dir][v.first] + heuristic_cost_estimate(v.first, dest);
+                path_info[dir][v.first] = u;
+                // From SRC to Dest
+                if (dir == 0){
+                    src_dist_node.push(std::make_pair(v.first, heuristic[dir][v.first]));
                 }
-
-                int tentative_g_score = g_score_f[current] + dist_to_neighb;
-
-                if(tentative_g_score >= g_score_f[neighbor])
-                {
-                    continue;
+                // From dest to src
+                else{
+                    dest_dist_node.push(std::make_pair(v.first, heuristic[dir][v.first]));
                 }
-                
-                path_info_f[neighbor] = current;
-                g_score_f[neighbor] = tentative_g_score;
-                f_score_f[neighbor] = g_score_f[neighbor] + heuristic_cost_estimate(neighbor, dest);
-                // if(nodes_in_open_set_f.find(neighbor) == nodes_in_open_set_f.end())
-                // {
-                    open_set_f.push(std::make_pair(neighbor, f_score_f[neighbor]));
-                    nodes_in_open_set_f.insert(neighbor);
-                // }
             }
         }
-        else
-        {
-            for (int i = 0; i < graph[current].size(); ++i)
-            {
-                std::pair<int, int> v = graph[current][i];
-
-                int neighbor = v.first;
-                int dist_to_neighb = v.second;
-                // Update dist[v.first] only if there is an edge from 
-                // u to v, and total weight of path from src to   
-                // v through u is smaller than current value of dist[v]
-
-                if(closed_set_b.find(neighbor) != closed_set_b.end())
-                {
-                    continue;
-                }
-
-                int tentative_g_score = g_score_b[current] + dist_to_neighb;
-
-                if(tentative_g_score >= g_score_b[neighbor])
-                {
-                    continue;
-                }
-                
-                path_info_b[neighbor] = current;
-                g_score_b[neighbor] = tentative_g_score;
-                f_score_b[neighbor] = g_score_b[neighbor] + heuristic_cost_estimate(neighbor, src);
-                // if(nodes_in_open_set_b.find(neighbor) == nodes_in_open_set_b.end())
-                // {
-                    open_set_b.push(std::make_pair(neighbor, f_score_b[neighbor]));
-                    nodes_in_open_set_b.insert(neighbor);
-                // }
-            }
-        }
-    }
-
-    while (!open_set_f.empty()){
-        int node_num = open_set_f.top().first;
-        if (g_score_b[node_num] != INT_MAX){
-            if (g_score_f[node_num] + g_score_b[node_num] < combined_dist){
-                combined_dist = g_score_f[node_num] + g_score_b[node_num];
-                crossover_node = node_num;
-            }
-        }
-        open_set_f.pop();
-    }
-    while (!open_set_b.empty()){
-        int node_num = open_set_b.top().first;
-        if (g_score_f[node_num] != INT_MAX){
-            if (g_score_f[node_num] + g_score_b[node_num] < combined_dist){
-                combined_dist = g_score_f[node_num] + g_score_b[node_num];
-                crossover_node = node_num;
-            }
-        }
-        open_set_b.pop();
     }
     // Update final_path_info with paths from both ends
     int path_finder = crossover_node;
     // Get from u to src
-    while (path_info_f[path_finder] != -1){
-        final_path_info[path_finder] = path_info_f[path_finder];
-        path_finder = path_info_f[path_finder];
+    while (path_info[0][path_finder] != -1){
+        final_path_info[path_finder] = path_info[0][path_finder];
+        path_finder = path_info[0][path_finder];
     }
     // Get from dest to u
     path_finder = crossover_node;
-    while (path_info_b[path_finder] != -1){
-        final_path_info[path_info_b[path_finder]] = path_finder;
-        path_finder = path_info_b[path_finder];
+    while (path_info[1][path_finder] != -1){
+        final_path_info[path_info[1][path_finder]] = path_finder;
+        path_finder = path_info[1][path_finder];
     }
-
     printSolution(src, dest, combined_dist, final_path_info);
     // Again for timing purposes only
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
