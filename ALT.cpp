@@ -128,7 +128,7 @@ class ALT_Class
         std::unordered_set<int> closed_set;
         std::unordered_set<int> closed_set_f;
         std::unordered_set<int> closed_set_b;
-        int landmark_index = 0;
+        int landmark_index;
         int *g_score;
         int *f_score;
         int *path_info;
@@ -229,7 +229,7 @@ int main(int argc, char** argv){
     // print_all_coords(graph_coords);
     ALT_Class alt_inst;
 
-    alt_inst.get_landmarks(8);
+    alt_inst.get_landmarks(4);
 
     alt_inst.get_dist_btw_landmarks();
 
@@ -239,32 +239,21 @@ int main(int argc, char** argv){
     while (temp_char == 'c'){
         char which_algos_char;
         cout << "Do you want to do both Dijkstras or only one?\n";
-        cout << "1 for 1 directional only, 2 for bidirectional only, b for both:, 3 for ALT \n"
-        <<"4 for bidirectional ALT: ";
+        cout << "1 for 1 directional only, 2 for bidirectional only, b for both:";
         cin >> which_algos_char;
         cout << "Enter starting node: ";
         cin >> src;
         cout << "Enter ending node: ";
         cin >> dest;
-        if (which_algos_char == '1' || which_algos_char == 'b'){
-            cout << "Starting Dijkstras algorithm" << endl;
-            // dijkstra(graph, node_count, src, dest);
-        }
-        if (which_algos_char == '2' || which_algos_char == 'b'){
-            cout << "Starting Bidirectional Dijkstras algorithm" << endl;
-            // bidirectional_dijkstra(graph, node_count, src, dest);
-        }
-        if (which_algos_char == '3')
+        if (which_algos_char == '1' || which_algos_char == 'b')
         {
             cout << "Starting ALT algorithm" << endl;
             alt_inst.alt_alg(graph_coords.size(), src, dest);
-            // alt_inst.bi_alt_alg(graph_coords.size(), src, dest);
         }
-        if (which_algos_char == '4')
+        if (which_algos_char == '2' || which_algos_char == 'b')
         {
             cout << "Starting Bi-Directional ALT algorithm" << endl;
             alt_inst.bi_alt_alg(graph_coords.size(), src, dest);
-            // alt_inst.bi_alt_alg(graph_coords.size(), src, dest);
         }
         cout << "Do you want to do another pair?\n";
         cout << "c to continue, q to quit:";
@@ -408,7 +397,7 @@ void readInGraphCoordinates(std::vector<std::pair<int, int> > &graph_coords, int
 void ALT_Class::print_landmarks()
 {
     cout << "Landmarks are:" << endl;
-    for (auto it = landmarks.begin(); it != landmarks.end(); it++)
+    for (std::unordered_set<int>::iterator it = landmarks.begin(); it != landmarks.end(); it++)
     {
         cout << *it << endl;
     }
@@ -437,7 +426,7 @@ void ALT_Class::get_landmarks(int k)
 
             double total_dist = 0;
             // cout << j << endl;
-            for(auto it = landmarks.begin(); it != landmarks.end(); it++)
+            for(std::unordered_set<int>::iterator it = landmarks.begin(); it != landmarks.end(); it++)
             {
                 int cur_node = *it;
                 total_dist += distance_btw_coords(graph_coords[cur_node], graph_coords[j]);
@@ -533,7 +522,7 @@ double distance_btw_coords(std::pair<int,int> coord_1, std::pair<int,int> coord_
 void ALT_Class::get_dist_btw_landmarks()
 {
 
-    for (auto it = landmarks.begin(); it != landmarks.end(); it++)
+    for (std::unordered_set<int>::iterator it = landmarks.begin(); it != landmarks.end(); it++)
     {
         int land_mark_node = *it;
         // for(int i = 1; i < graph_coords.size() + 1; ++i)
@@ -656,6 +645,7 @@ void ALT_Class::alt_alg(int node_count, int src, int dest)
             // v through u is smaller than current value of dist[v]
             if (dist[u]+v.second < dist[v.first]){
                 dist[v.first] = dist[u]+v.second;
+                visited[v.first] = false;
                 int heuristic = dist[v.first] + heuristic_cost_estimate(v.first, dest);
                 path_info[v.first] = u;
                 dist_node.push(std::make_pair(v.first, heuristic));
@@ -751,8 +741,8 @@ void ALT_Class::bi_alt_alg(int node_count, int src, int dest)
     visited[1] = new bool[node_count+1];
     // Initialize all distances as INFINITE and visited[x][i] as false
     for (int i = 0; i < node_count+1; i++){
-        dist[0][i] = INT_MAX, visited[0][i] = false, path_info[0][i] = -1;
-        dist[1][i] = INT_MAX, visited[1][i] = false, path_info[1][i] = -1;
+        dist[0][i] = INT_MAX, heuristic[0][i] = INT_MAX, visited[0][i] = false, path_info[0][i] = -1;
+        dist[1][i] = INT_MAX, heuristic[1][i] = INT_MAX, visited[1][i] = false, path_info[1][i] = -1;
         final_path_info[i] = -1;
     }
     // Distance of source vertex from itself is always 0
@@ -766,13 +756,10 @@ void ALT_Class::bi_alt_alg(int node_count, int src, int dest)
     int combined_dist = INT_MAX;
     // Used for vertex we are analyzing in the loop
     int u = 0;
-    // Will be set to true if we "visited" a node coming from each direction
-    bool found_in_each = false;
-    bool finished_dest = false;
-    bool finished_src = false;
+    bool finished = false;
     // What node was the crossover node
     int crossover_node = -1;
-    while (!finished_dest || !finished_src){
+    while (!finished){
         // Pick the minimum distance vertex not visited (from either queue)
         // From SRC to Dest
         while (!src_dist_node.empty() && visited[0][src_dist_node.top().first]){
@@ -803,27 +790,23 @@ void ALT_Class::bi_alt_alg(int node_count, int src, int dest)
         }
         // Mark the picked vertex as visited
         visited[dir][u] = true;
-        // As soon as you have found one in each you know that you can't
-        // Add anything else to the queue so just check through all them
-        // Until you find the shortest path
-        if (visited[!dir][u] && !found_in_each){
-            combined_dist = dist[!dir][u] + dist[dir][u];
-            found_in_each = true;
-            crossover_node = u;
-        }
-        else if (visited[!dir][u] && (heuristic[dir][u] > combined_dist)){
-            if (dir == 0){
-                finished_src = true;
-            }
-            else{
-                finished_dest = true;
+        // Combined distance could be lowered from this node
+        if (visited[!dir][u]){
+            if((dist[!dir][u] + dist[dir][u]) < combined_dist){
+                combined_dist = dist[!dir][u] + dist[dir][u];
+                crossover_node = u;
             }
             continue;
         }
-        else if (found_in_each && visited[!dir][u] &&
+        // Any chance you can to make upper bound tighter do
+        if (dist[!dir][u] != INT_MAX &&
             (dist[!dir][u] + dist[dir][u]) < combined_dist){
             combined_dist = dist[!dir][u] + dist[dir][u];
             crossover_node = u;
+        }
+        if (heuristic[dir][u] > combined_dist){
+            finished = true;
+            continue;
         }
         // Update dist value of the adjacent vertices of the picked vertex.
         for (int i = 0; i < graph[u].size(); ++i)
@@ -833,8 +816,16 @@ void ALT_Class::bi_alt_alg(int node_count, int src, int dest)
             // u to v, and total weight of path from src to v through u is 
             // smaller than current value of dist[dir][v]
             if (dist[dir][u] + v.second < dist[dir][v.first]){
+                // Because of the heuristic we can't guarantee that once
+                // something is marked visitied that it will stay visited
+                visited[dir][v.first] = false;
                 dist[dir][v.first] = dist[dir][u]+v.second;
-                heuristic[dir][v.first] = dist[dir][v.first] + heuristic_cost_estimate(v.first, dest);
+                if (dir == 0){
+                    heuristic[dir][v.first] = dist[dir][v.first] + heuristic_cost_estimate(v.first, dest);
+                }
+                else{
+                    heuristic[dir][v.first] = dist[dir][v.first] + heuristic_cost_estimate(v.first, src);
+                }
                 path_info[dir][v.first] = u;
                 // From SRC to Dest
                 if (dir == 0){
