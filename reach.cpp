@@ -80,12 +80,13 @@ void print_land_mark_distances(std::map<int, std::vector<std::pair<int, double> 
 
 void print_landmarks(std::set<int> &landmarks);
 
-class ALT_Class
+class ReachClass
 {
     private:
         std::unordered_set<int> landmarks;
         static std::vector<std::vector<int> > land_dist;
         int landmark_index;
+        int* reaches;
 
     public:
         void get_landmarks(int k);
@@ -100,7 +101,7 @@ class ALT_Class
 std::map<int,std::vector<std::pair<int,int> > > graph;
 //after reading in coordinates will be 1-indexed
 std::vector<std::pair<int,int> > graph_coords;
-std::vector<std::vector<int> > ALT_Class::land_dist;
+std::vector<std::vector<int> > ReachClass::land_dist;
 
 int main(int argc, char** argv){
     if (argc < 3){
@@ -116,7 +117,7 @@ int main(int argc, char** argv){
     readInGraphCoordinates(graph_coords, node_count, file_name_coords);
     // printMap(graph);
     // print_all_coords(graph_coords);
-    ALT_Class alt_inst;
+    ReachClass alt_inst;
     // Pass in the number of landmarks you want to have
     alt_inst.get_landmarks(4);
     int src, dest;
@@ -147,7 +148,7 @@ int main(int argc, char** argv){
     return 0;
 }
 
-void ALT_Class::print_landmarks()
+void ReachClass::print_landmarks()
 {
     cout << "Landmarks are:" << endl;
     for (std::unordered_set<int>::iterator it = landmarks.begin(); it != landmarks.end(); it++)
@@ -156,7 +157,7 @@ void ALT_Class::print_landmarks()
     }
 }
 
-void ALT_Class::get_landmarks(int k)
+void ReachClass::get_landmarks(int k)
 {
     // Set this flag for heuristic cost function
     landmark_index = -1;
@@ -235,7 +236,7 @@ bool pair_comparator(std::pair<int, int> left, std::pair<int, int> right)
     return left.second >= right.second;
 }
 
-void ALT_Class::alt_alg(int node_count, int src, int dest)
+void ReachClass::alt_alg(int node_count, int src, int dest)
 {
     // For timing purposes only
     typedef std::chrono::duration<int,std::milli> millisecs_t;
@@ -302,7 +303,7 @@ void ALT_Class::alt_alg(int node_count, int src, int dest)
     std::cout << "That took: " << duration.count() << " milliseconds.\n";
 }
 
-void ALT_Class::choose_landmark_index(int src, int dest)
+void ReachClass::choose_landmark_index(int src, int dest)
 {
     int max_heur = INT_MIN;
     int max_index = 0;
@@ -323,7 +324,7 @@ void ALT_Class::choose_landmark_index(int src, int dest)
     landmark_index = max_index;
 }
 
-int ALT_Class::heuristic_cost_estimate(int start, int dest)
+int ReachClass::heuristic_cost_estimate(int start, int dest)
 {
     // We are going off one landmark alone the whole time
     if (landmark_index != -1){
@@ -349,7 +350,7 @@ int ALT_Class::heuristic_cost_estimate(int start, int dest)
     return max_heur;
 }
 
-void ALT_Class::bi_alt_alg(int node_count, int src, int dest)
+void ReachClass::bi_alt_alg(int node_count, int src, int dest)
 {
     // For timing purposes only
     typedef std::chrono::duration<int,std::milli> millisecs_t;
