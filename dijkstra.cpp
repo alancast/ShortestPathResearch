@@ -436,13 +436,13 @@ void printSolution(int src, int dest, int distance, int *path_info)
     // Print the shortest path from src to dest
     cout << "The shortest path from node " << src << " to node " << dest;
     cout << " is " << distance << endl;
-    cout << "Working backwards the path was: " << dest << " ";
-    int path_finder = dest;
-    while (path_info[path_finder] != src){
-        cout << path_info[path_finder] << " ";
-        path_finder = path_info[path_finder];
-    }
-    cout << src << endl;
+    // cout << "Working backwards the path was: " << dest << " ";
+    // int path_finder = dest;
+    // while (path_info[path_finder] != src){
+    //     cout << path_info[path_finder] << " ";
+    //     path_finder = path_info[path_finder];
+    // }
+    // cout << src << endl;
 }
 
 void printMap(std::map<int,std::vector<std::pair<int,int> > > &graph)

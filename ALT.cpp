@@ -87,7 +87,8 @@ bool pair_comparator(std::pair<int, int> left, std::pair<int, int> right);
 // MODIFIES: nothing
 // RETURNS: nothing
 
-void dijkstra(std::map<int,std::vector<std::pair<int,int> > > &graph, std::map<int, std::vector<std::pair<int, double> > >  &land_dist,
+void dijkstra(std::map<int,std::vector<std::pair<int,int> > > &graph, 
+                std::vector<std::vector<int> >  &land_dist,
                 int node_count, int src, int dest);
 
 //reads in graph_coords, graph_coords will be 1-indexed first int is lng, 2nd is lat
@@ -104,10 +105,6 @@ double distance_btw_coords(std::pair<int,int> coord_1, std::pair<int,int> coord_
 void get_landmarks(int k, std::vector<std::pair<int,int> > &graph_coords,
     std::set<int> &landmarks);
 
-void get_dist_btw_landmarks(std::vector<std::pair<int,int> > &graph_coords, 
-                            std::map<int,std::vector<std::pair<int,int> > > &graph,
-                            std::set<int> &landmarks, std::map<int,std::vector<std::pair<int, double> > >  &land_dist);
-
 void print_land_mark_distances(std::map<int, std::vector<std::pair<int, double> > >  &land_dist);
 
 
@@ -122,93 +119,29 @@ class ALT_Class
 {
     private:
         std::unordered_set<int> landmarks;
-        static std::map<int, std::vector<std::pair<int, double> > >  land_dist;
+        static std::vector<std::vector<int> > land_dist;
         static int dest;
-        // std::unordered_set<int> open_set;
-        std::unordered_set<int> closed_set;
-        std::unordered_set<int> closed_set_f;
-        std::unordered_set<int> closed_set_b;
         int landmark_index;
         int *g_score;
         int *f_score;
         int *path_info;
 
     public:
-        // void set_dest(int input_dest)
-        // {
-        //     dest = input_dest;
-        // }
         ALT_Class()
         {
             dest = 0;
         }
         void get_landmarks(int k);
-        void get_dist_btw_landmarks();
         void print_landmarks();
-
-        void print_land_mark_distances();
-        // bool alt_comparator(std::pair<int, int> left, std::pair<int, int> right);
-
         void alt_alg(int node_count, int src, int dest);
-
         void bi_alt_alg(int node_count, int src, int dest);
-
-        double heuristic_cost_estimate(int start, int dest);
-
+        int heuristic_cost_estimate(int start, int dest);
         void choose_landmark_index(int src, int dest);
-
-
-        class alt_comparator
-        {
-            public:
-                bool operator() (std::pair<int, int> left, std::pair<int, int> right)
-                {
-                    int left_node = left.first;
-                    int right_node = right.first;
-                    double left_est = left.second;
-                    double right_est = right.second;
-
-                    double max_left_heur = INT_MIN;
-                    double max_right_heur = INT_MIN;
-
-                    for (int i = 0; i < 1; ++i)
-                    {
-                        int land_mark_node = land_dist[left_node][i].first;
-                        int left_dist_land = land_dist[left_node][i].second;
-
-                        int right_dist_land = land_dist[right_node][i].second;
-
-                        int dest_dist_land = land_dist[dest][i].second;
-
-                        int total_left = abs(left_dist_land - dest_dist_land);
-                        int total_right = abs(right_dist_land + dest_dist_land);
-
-                        if(total_left > max_left_heur)
-                        {
-                            max_left_heur = total_left;
-                        }
-
-                        if(total_right > max_right_heur)
-                        {
-                            max_right_heur = total_right;
-                        }
-                    }
-                    return max_left_heur >= max_right_heur;
-                }
-
-        };
-
-        private:
-            // std::priority_queue<std::pair<int,int>, 
-            // std::vector<std::pair<int, int> >, 
-            // alt_comparator > dist_node;
-
-
 
 };
 
 
-std::map<int, std::vector<std::pair<int, double> > > ALT_Class::land_dist;
+std::vector<std::vector<int> > ALT_Class::land_dist;
 int ALT_Class::dest;
 
 int main(int argc, char** argv){
@@ -231,14 +164,12 @@ int main(int argc, char** argv){
 
     alt_inst.get_landmarks(4);
 
-    alt_inst.get_dist_btw_landmarks();
-
     int src, dest;
 
     char temp_char = 'c';
     while (temp_char == 'c'){
         char which_algos_char;
-        cout << "Do you want to do both Dijkstras or only one?\n";
+        cout << "Do you want to do both ALT or only one?\n";
         cout << "1 for 1 directional only, 2 for bidirectional only, b for both:";
         cin >> which_algos_char;
         cout << "Enter starting node: ";
@@ -259,23 +190,9 @@ int main(int argc, char** argv){
         cout << "c to continue, q to quit:";
         cin >> temp_char;
     }
-
-    // alt_inst.set_dest(45);
-
-
-
-    // alt_inst.print_landmarks();
-
-
-    // alt_inst.print_land_mark_distances();
-
     
     return 0;
 }
-// ENDING MAIN
-// ------------------------------------------------------------------------
-// ------------------------------------------------------------------------
-// ------------------------------------------------------------------------
 
 void readInGraph(std::map<int,std::vector<std::pair<int,int> > > &graph, 
                     int &node_count, const std::string &file_name)
@@ -408,13 +325,13 @@ void ALT_Class::get_landmarks(int k)
 {
     int num_nodes = graph_coords.size();
     int start = num_nodes / 2;
-
+    dijkstra(graph, land_dist, graph_coords.size(), start, 123);
     landmarks.insert(start);
 
     while(landmarks.size() < k)
     {
         int cur_furthest_node = -1;
-        double cur_furthest_avg = INT_MIN;
+        int cur_furthest_avg = INT_MIN;
 
         for(int j = 1; j < graph_coords.size() + 1; ++j)
         {
@@ -424,14 +341,21 @@ void ALT_Class::get_landmarks(int k)
                 continue;
             }
 
-            double total_dist = 0;
+            long long total_dist = 0;
             // cout << j << endl;
-            for(std::unordered_set<int>::iterator it = landmarks.begin(); it != landmarks.end(); it++)
+            for(int k = 0; k < landmarks.size(); k++)
             {
-                int cur_node = *it;
-                total_dist += distance_btw_coords(graph_coords[cur_node], graph_coords[j]);
+                int new_dist = land_dist[k][j];
+                if (new_dist == INT_MAX){
+                    // cout << "No path to node " << j << endl;
+                    break;
+                }
+                // if (new_dist < 1000000){
+                //     break;
+                // }
+                total_dist += new_dist;
             }
-            double average_dist = total_dist/landmarks.size();
+            int average_dist = total_dist/landmarks.size();
             if(average_dist > cur_furthest_avg)
             {
                 // cout << "avg distance_to_node is: " << average_dist << endl;
@@ -440,9 +364,8 @@ void ALT_Class::get_landmarks(int k)
                 cur_furthest_node = j;
             }
         }
-
-
-        // cout << "Node " << cur_furthest_node << " is being inserted" << endl;
+        cout << "Adding landmark: " << cur_furthest_node << endl;
+        dijkstra(graph, land_dist, graph_coords.size(), cur_furthest_node, 123);
         landmarks.insert(cur_furthest_node);
     }
 }
@@ -461,28 +384,12 @@ void printMap(std::map<int,std::vector<std::pair<int,int> > > &graph)
     }
 }
 
-
-
 void print_all_coords(std::vector<std::pair<int,int> > &graph_coords)
 {
     for(int i = 1; i < graph_coords.size(); ++i)
     {
         cout << "Coordinates of node " << i << " is: " << graph_coords[i].first << ", " << graph_coords[i].second;
         cout << endl;
-    }
-}
-
-void ALT_Class::print_land_mark_distances()
-{
-    for(int i = 1; i < land_dist.size() + 1; ++i)
-    {
-        for(int j = 0; j < land_dist[i].size(); ++j)
-        {
-            int land_mark_node = land_dist[i][j].first;
-            double dist_to_land = land_dist[i][j].second;
-            cout << "Distance Between " << i << " and node " << land_mark_node
-                << " is: " << dist_to_land << endl;
-        }
     }
 }
 
@@ -499,7 +406,6 @@ void printSolution(int src, int dest, int distance, int *path_info)
     // }
     // cout << src << endl;
 }
-
 
 double distance_btw_coords(std::pair<int,int> coord_1, std::pair<int,int> coord_2)
 {
@@ -519,21 +425,6 @@ double distance_btw_coords(std::pair<int,int> coord_1, std::pair<int,int> coord_
     return dist;
 }
 
-void ALT_Class::get_dist_btw_landmarks()
-{
-
-    for (std::unordered_set<int>::iterator it = landmarks.begin(); it != landmarks.end(); it++)
-    {
-        int land_mark_node = *it;
-        // for(int i = 1; i < graph_coords.size() + 1; ++i)
-        // {
-        //     double dist_btwn = distance_btw_coords(graph_coords[i], graph_coords[land_mark_node]);
-        //     land_dist[i].push_back(std::make_pair(land_mark_node, dist_btwn));
-        // }
-        dijkstra(graph, land_dist, graph_coords.size(), land_mark_node, 8);
-    }
-}
-
 bool pair_comparator(std::pair<int, int> left, std::pair<int, int> right)
 {
     return left.second >= right.second;
@@ -541,7 +432,7 @@ bool pair_comparator(std::pair<int, int> left, std::pair<int, int> right)
 
 
 void dijkstra(std::map<int,std::vector<std::pair<int,int> > > &graph, 
-                std::map<int, std::vector<std::pair<int, double> > >  &land_dist,
+                std::vector<std::vector<int> >  &land_dist,
                 int node_count, int src, int dest)
 {
     // Distance priority queue. dist_node[0] will hold the node with the minimum distance
@@ -591,11 +482,12 @@ void dijkstra(std::map<int,std::vector<std::pair<int,int> > > &graph,
         }
     }
     printSolution(src, dest, dist[dest], path_info);
-
-    for(int i = 1; i < node_count + 1; ++i)
+    std::vector<int> temp_land_vector;
+    for(int i = 0; i < node_count + 1; ++i)
     {
-        land_dist[i].push_back(std::make_pair(src, dist[i]));
+        temp_land_vector.push_back(dist[i]);
     }
+    land_dist.push_back(temp_land_vector);
 }
 
 
@@ -609,6 +501,7 @@ void ALT_Class::alt_alg(int node_count, int src, int dest)
             std::vector<std::pair<int, int> >, 
             std::function<bool(std::pair<int,int>, std::pair<int,int>)> > dist_node(pair_comparator);
     dist_node.push(std::make_pair(src, 0));
+    // choose_landmark_index(src, dest);
     // Distance array. dist[i] will hold the shortest distance from src to i
     int *dist = new int[node_count+1];
     // How you got to that node array. path_info[i] will hold what node got us to i
@@ -661,46 +554,46 @@ void ALT_Class::alt_alg(int node_count, int src, int dest)
 
 void ALT_Class::choose_landmark_index(int src, int dest)
 {
-    double max_heur = INT_MIN;
-    double max_index = 0;
-    for (int i = 0; i < land_dist[src].size(); ++i)
+    int max_heur = INT_MIN;
+    int max_index = 0;
+    for (int i = 0; i < land_dist.size(); ++i)
     {
-        double start_dist_land = land_dist[src][i].second;
-        double dest_dist_land = land_dist[dest][i].second; 
-        double total_dist = std::abs(start_dist_land - dest_dist_land);
+        int start_dist_land = land_dist[i][src];
+        int dest_dist_land = land_dist[i][dest]; 
+        if (start_dist_land == INT_MAX || dest_dist_land == INT_MAX){
+            continue;
+        }
+        int total_dist = std::abs(start_dist_land - dest_dist_land);
         if(total_dist > max_heur)
         {
             max_heur = total_dist;
             max_index = i;
         }
-
     }
-
     landmark_index = max_index;
-
 }
 
 
-double ALT_Class::heuristic_cost_estimate(int start, int dest)
+int ALT_Class::heuristic_cost_estimate(int start, int dest)
 {
-    double max_heur = INT_MIN;
-    for (int i = 0; i < land_dist[start].size(); ++i)
+    int max_heur = INT_MIN;
+    for (int i = 0; i < land_dist.size(); ++i)
     {
-        double start_dist_land = land_dist[start][i].second;
-        double dest_dist_land = land_dist[dest][i].second; 
-        double total_dist = std::abs(start_dist_land - dest_dist_land);
+        int start_dist_land = land_dist[i][start];
+        int dest_dist_land = land_dist[i][dest]; 
+        if (start_dist_land == INT_MAX || dest_dist_land == INT_MAX){
+            continue;
+        }
+        int total_dist = std::abs(start_dist_land - dest_dist_land);
         if(total_dist > max_heur)
         {
             max_heur = total_dist;
         }
 
-    }
-    
+    }    
     return max_heur;
-
-
-    // double start_dist_land = land_dist[start][0].second;
-    // double dest_dist_land = land_dist[dest][0].second; 
+    // double start_dist_land = land_dist[landmark_index][start];
+    // double dest_dist_land = land_dist[landmark_index][dest]; 
     // double total_dist = std::abs(start_dist_land - dest_dist_land);
     // return total_dist;
 }
@@ -722,6 +615,8 @@ void ALT_Class::bi_alt_alg(int node_count, int src, int dest)
             std::vector<std::pair<int, int> >, 
             std::function<bool(std::pair<int,int>, std::pair<int,int>)> > dest_dist_node(pair_comparator);
     dest_dist_node.push(std::make_pair(dest, 0));
+
+    choose_landmark_index(src, dest);
     // Distance array. dist[x][i] will hold the shortest distance from start to i
     int **dist = new int*[2];
     dist[0] = new int[node_count+1];
