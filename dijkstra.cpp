@@ -24,27 +24,19 @@ using std::endl;
 void readInGraph(std::map<int,std::vector<std::pair<int,int> > > &graph, 
                     int &node_count, const std::string &file_name);
 
-// ARCHIVED FUNCTION
-// ----------------------------------------------------------------------
-// A debugging function that prints out the graph
-// INPUTS: graph - 2D array by double pointer of graph
-//         node_count - row & column size of graph
-// MODIFIES: nothing
-// RETURNS: nothing
-// void printGraph(int **graph, int node_count);
-// ----------------------------------------------------------------------
-
 // A debugging function that prints out the graph
 // INPUTS: graph - unordered map of <int, vector<pairs>>
 // MODIFIES: nothing
 // RETURNS: nothing
 void printMap(std::map<int,std::vector<std::pair<int,int> > > &graph);
+
 // Prints the constructed distance array from starting point
 // INPUTS: dist - int array with distances to every other node
 //         node_count = length of dist array
 // MODIFIES: nothing
 // RETURNS: nothing
 void printDistanceArray(int *dist, int node_count);
+
 // Prints the solution (total distance as well as path to get there)
 // INPUTS: src - source node #
 //         dest - destination node #
@@ -53,6 +45,7 @@ void printDistanceArray(int *dist, int node_count);
 // MODIFIES: nothing
 // RETURNS: nothing
 void printSolution(int src, int dest, int distance, int *path_info);
+
 // Implements Dijkstra's single source shortest path algorithm
 // for a graph represented using edge map representation
 // INPUTS: graph - unordered map with key of source node and value of
@@ -64,6 +57,7 @@ void printSolution(int src, int dest, int distance, int *path_info);
 // RETURNS: nothing
 void dijkstra(std::map<int,std::vector<std::pair<int,int> > > &graph,
                 int node_count, int src, int dest);
+
 // Implements Bidirectional Dijkstra's single source shortest path algorithm
 // for a graph represented using edge map representation
 // This assumes that all roads are two directional (hopefully this won't be a problem)
@@ -76,6 +70,7 @@ void dijkstra(std::map<int,std::vector<std::pair<int,int> > > &graph,
 // RETURNS: nothing
 void bidirectional_dijkstra(std::map<int,std::vector<std::pair<int,int> > > &graph,
                 int node_count, int src, int dest);
+
 // Custom comparator for priority queue
 // INPUTS: left - pair of (node, dist) of left part
 //         right - pair of (node, dist) of right part
@@ -190,21 +185,6 @@ void readInGraph(std::map<int,std::vector<std::pair<int,int> > > &graph,
         exit(1);
     }
 }
-
-/*
-ARCHIVED FUNCTION
-void printGraph(int **graph, int node_count)
-{
-    for (int i = 0; i < node_count; ++i)
-    {
-        for (int j = 0; j < node_count; ++j)
-        {
-            cout << graph[i][j] << " ";
-        }
-        cout << endl;
-    }
-}
-*/
 
 void dijkstra(std::map<int,std::vector<std::pair<int,int> > > &graph,
                 int node_count, int src, int dest)
@@ -381,23 +361,41 @@ void bidirectional_dijkstra(std::map<int,std::vector<std::pair<int,int> > > &gra
     // Find the shortest path from whatever is remaining in the queues
     while (!src_dist_node.empty()){
         int node_num = src_dist_node.top().first;
+        src_dist_node.pop();
+        // This path can't be shorter because both distances are longer
+        if (!visited[1][node_num]){
+            continue;
+        }
+        // No need to evaluate rest of queue cuz it won't produce a shorter path
+        // Assuming all positive edge weights 
+        if (dist[0][node_num] > combined_dist){
+            break;
+        }
         if (dist[1][node_num] != INT_MAX){
             if (dist[0][node_num] + dist[1][node_num] < combined_dist){
                 combined_dist = dist[0][node_num] + dist[1][node_num];
                 crossover_node = node_num;
             }
         }
-        src_dist_node.pop();
     }
     while (!dest_dist_node.empty()){
         int node_num = dest_dist_node.top().first;
+        dest_dist_node.pop();
+        // This path can't be shorter because both distances are longer
+        if (!visited[0][node_num]){
+            continue;
+        }
+        // No need to evaluate rest of queue cuz it won't produce a shorter path
+        // Assuming all positive edge weights 
+        if (dist[1][node_num] > combined_dist){
+            break;
+        }
         if (dist[0][node_num] != INT_MAX){
             if (dist[0][node_num] + dist[1][node_num] < combined_dist){
                 combined_dist = dist[0][node_num] + dist[1][node_num];
                 crossover_node = node_num;
             }
         }
-        dest_dist_node.pop();
     }
     // Update final_path_info with paths from both ends
     int path_finder = crossover_node;
