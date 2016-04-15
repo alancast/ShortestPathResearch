@@ -24,6 +24,17 @@ using std::endl;
 void readInGraph(std::map<int,std::vector<std::pair<int,int> > > &graph, 
                     int &node_count, const std::string &file_name);
 
+// Reads in coordinate graph from input file
+// INPUTS: graph_coords - vector of double pairs of coordinates
+//         node_count - number of nodes
+//         file_name - string name of file 
+// MODIFIES: graph_coords - puts coordinates of node i in entry i
+//           node_count - sets it equal to the number of lines in the file
+//                which should be the number of nodes in the graph
+// RETURNS: nothing
+void readInGraphCoordinates(std::vector<std::pair<double, double> > &graph_coords, 
+                            int &node_count, const std::string &file_name);
+
 // A debugging function that prints out the graph
 // INPUTS: graph - unordered map of <int, vector<pairs>>
 // MODIFIES: nothing
@@ -53,10 +64,11 @@ void printSolution(int src, int dest, int distance, int *path_info);
 //         src - What node we are starting at and thus computing 
 //              shortest paths from
 //         node_count - row & column size of graph
+//         outfile - name of output file we are writing to
 // MODIFIES: nothing
 // RETURNS: nothing
 void dijkstra(std::map<int,std::vector<std::pair<int,int> > > &graph,
-                int node_count, int src, int dest);
+                int node_count, int src, int dest, const std::string &outfile);
 
 // Implements Bidirectional Dijkstra's single source shortest path algorithm
 // for a graph represented using edge map representation
@@ -66,10 +78,11 @@ void dijkstra(std::map<int,std::vector<std::pair<int,int> > > &graph,
 //         src - What node we are starting at and thus computing 
 //              shortest paths from
 //         node_count - row & column size of graph
+//         outfile - name of output file we are writing to
 // MODIFIES: nothing
 // RETURNS: nothing
 void bidirectional_dijkstra(std::map<int,std::vector<std::pair<int,int> > > &graph,
-                int node_count, int src, int dest);
+                int node_count, int src, int dest, const std::string &outfile);
 
 // Custom comparator for priority queue
 // INPUTS: left - pair of (node, dist) of left part
@@ -85,17 +98,21 @@ bool pair_comparator(std::pair<int, int> left, std::pair<int, int> right);
 // ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
+std::vector<std::pair<double,double> > graph_coords;
 int main(int argc, char** argv){
-    if (argc < 2){
-        cout << "ABORTING: Not enough command line arguments\n";
-        cout << "Need Graph filename\n";
+    if (argc < 4){
+        cout << "ABORTING: Not enough command line arguments, need 3\n";
+        cout << "<distance_graph> <coordinates_graph> <outfile>\n";
         return 1;
     }
     // RoadMap graph used to find shortest path
     int node_count = 0;
-    std::string file_name = argv[1];
+    std::string distance_graph = argv[1];
+    std::string coordinates_graph = argv[2];
+    std::string outfile = argv[3];
     std::map<int,std::vector<std::pair<int,int> > > graph;
-    readInGraph(graph, node_count, file_name);
+    readInGraph(graph, node_count, distance_graph);
+    readInGraphCoordinates(graph_coords, node_count, coordinates_graph);
     int src, dest;
     char temp_char = 'c';
     while (temp_char == 'c'){
@@ -109,11 +126,11 @@ int main(int argc, char** argv){
         cin >> dest;
         if (which_algos_char == '1' || which_algos_char == 'b'){
             cout << "Starting Dijkstras algorithm" << endl;
-            dijkstra(graph, node_count, src, dest);
+            dijkstra(graph, node_count, src, dest, outfile);
         }
         if (which_algos_char == '2' || which_algos_char == 'b'){
             cout << "Starting Bidirectional Dijkstras algorithm" << endl;
-            bidirectional_dijkstra(graph, node_count, src, dest);
+            bidirectional_dijkstra(graph, node_count, src, dest, outfile);
         }
         cout << "Do you want to do another pair?\n";
         cout << "c to continue, q to quit:";
@@ -186,9 +203,74 @@ void readInGraph(std::map<int,std::vector<std::pair<int,int> > > &graph,
     }
 }
 
-void dijkstra(std::map<int,std::vector<std::pair<int,int> > > &graph,
-                int node_count, int src, int dest)
+void readInGraphCoordinates(std::vector<std::pair<double, double> > &graph_coords, int &node_count,
+                        const std::string &file_name)
 {
+    cout << "Reading in graph from file: " << file_name << endl;
+    char temp_char;
+    std::string line;
+    std::ifstream infile(file_name);
+    node_count = 0;
+    graph_coords.resize(1);
+    if (infile.is_open()){
+        // Read whole file
+        while (!infile.eof()){
+            // Get first character of line
+            infile >> temp_char;
+            // Text line
+            if (temp_char == 'c'){
+                // waste the line
+                getline(infile,line);
+                // cout << line << endl;
+            }
+            // Node count and arc count line
+            else if (temp_char == 'p'){
+                getline(infile,line);
+                // cout << line << endl;
+                // currently line is in format (" sp node_count arc_cout")
+                std::vector<std::string> strs;
+                boost::split(strs, line, boost::is_any_of(" "));
+                // node_count = atoi(strs[4].c_str());
+            }
+            // Arc info line (node1 node2 distance)
+            else if (temp_char == 'v'){
+                node_count++;
+                int node_num;
+                double lng, lat;
+                infile >> node_num >> lng >> lat;
+                // node1 already exists in map so just insert next arc
+
+                // node1 doesn't exist in map so create it and add arc
+                std::pair <double,double> temp_pair;
+                temp_pair = std::make_pair(lng/1000000.0, lat/1000000.0);
+                graph_coords.push_back(temp_pair);
+            }
+            // Some unkown starting character
+            else{
+                cout << "ABORTING: Saw unknown character in file\n";
+                cout << "Character was:\t" << temp_char << endl;
+                exit(2);
+            }
+        }
+        infile.close();
+        return;
+    }
+    else{
+        cout << "ABORTING: Unable to open input file\n";
+        exit(1);
+    }
+}
+
+void dijkstra(std::map<int,std::vector<std::pair<int,int> > > &graph,
+                int node_count, int src, int dest, const std::string &outfile)
+{
+    // For writing to output file
+    std::ofstream output;
+    output.open(outfile);
+    output << "c Starting one directional Dijkstras.\n";
+    // Output starting coordinate and destination coordinate
+    output << "s " << graph_coords[src].first << " " << graph_coords[src].second << endl;
+    output << "d " << graph_coords[dest].first << " " << graph_coords[dest].second << endl;
     // For timing purposes only
     typedef std::chrono::duration<int,std::milli> millisecs_t;
     std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
@@ -221,6 +303,7 @@ void dijkstra(std::map<int,std::vector<std::pair<int,int> > > &graph,
             exit(1);
         }
         u = dist_node.top().first;
+        output << "u " << graph_coords[u].first << " " << graph_coords[u].second << endl;
         dist_node.pop();
         // Mark the picked vertex as visited
         visited[u] = true;
@@ -234,6 +317,7 @@ void dijkstra(std::map<int,std::vector<std::pair<int,int> > > &graph,
             if (dist[u]+v.second < dist[v.first]){
                 dist[v.first] = dist[u]+v.second;
                 path_info[v.first] = u;
+                output << "a " << graph_coords[v.first].first << " " << graph_coords[v.first].second << endl;
                 dist_node.push(std::make_pair(v.first, dist[v.first]));
             }
         }
@@ -243,11 +327,19 @@ void dijkstra(std::map<int,std::vector<std::pair<int,int> > > &graph,
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     millisecs_t duration(std::chrono::duration_cast<millisecs_t>(end-start));
     std::cout << "That took: " << duration.count() << " milliseconds.\n";
+    output.close();
 }
 
 void bidirectional_dijkstra(std::map<int,std::vector<std::pair<int,int> > > &graph,
-                int node_count, int src, int dest)
+                int node_count, int src, int dest, const std::string &outfile)
 {
+    // For writing to output file
+    std::ofstream output;
+    output.open(outfile);
+    output << "c Starting bi-directional Dijkstras (bijkstras).\n";
+    // Output starting coordinate and destination coordinate
+    output << "s " << graph_coords[src].first << " " << graph_coords[src].second << endl;
+    output << "d " << graph_coords[dest].first << " " << graph_coords[dest].second << endl;
     // For timing purposes only
     typedef std::chrono::duration<int,std::milli> millisecs_t;
     std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
@@ -326,6 +418,8 @@ void bidirectional_dijkstra(std::map<int,std::vector<std::pair<int,int> > > &gra
             dest_dist_node.pop();
             dir = 1;
         }
+        // Output updated node we are searching from
+        output << "u " << graph_coords[u].first << " " << graph_coords[u].second << endl;
         // Mark the picked vertex as visited
         visited[dir][u] = true;
         // As soon as you have found one in each you know that you can't
@@ -350,10 +444,14 @@ void bidirectional_dijkstra(std::map<int,std::vector<std::pair<int,int> > > &gra
                 // From SRC to Dest
                 if (dir == 0){
                     src_dist_node.push(std::make_pair(v.first, dist[dir][v.first]));
+                    // Output forward search
+                    output << "f " << graph_coords[v.first].first << " " << graph_coords[v.first].second << endl;
                 }
                 // From dest to src
                 else{
                     dest_dist_node.push(std::make_pair(v.first, dist[dir][v.first]));
+                    // Output backward search
+                    output << "b " << graph_coords[v.first].first << " " << graph_coords[v.first].second << endl;
                 }
             }
         }
@@ -415,6 +513,7 @@ void bidirectional_dijkstra(std::map<int,std::vector<std::pair<int,int> > > &gra
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     millisecs_t duration(std::chrono::duration_cast<millisecs_t>(end-start));
     std::cout << "That took: " << duration.count() << " milliseconds.\n";
+    output.close();
 }
 
 bool pair_comparator(std::pair<int, int> left, std::pair<int, int> right)

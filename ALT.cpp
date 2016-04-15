@@ -64,7 +64,7 @@ void dijkstra(std::map<int,std::vector<std::pair<int,int> > > &graph,
                 int node_count, int src, int dest);
 
 //reads in graph_coords, graph_coords will be 1-indexed first int is lng, 2nd is lat
-void readInGraphCoordinates(std::vector<std::pair<int, int> > &graph_coords, 
+void readInGraphCoordinates(std::vector<std::pair<double, double> > &graph_coords, 
                             int &node_count, const std::string &file_name);
 
 void print_all_coords(std::vector<std::pair<int,int> > &graph_coords);
@@ -90,8 +90,8 @@ class ALT_Class
     public:
         void get_landmarks(int k);
         void print_landmarks();
-        void alt_alg(int node_count, int src, int dest);
-        void bi_alt_alg(int node_count, int src, int dest);
+        void alt_alg(int node_count, int src, int dest, const std::string &outfile);
+        void bi_alt_alg(int node_count, int src, int dest, const std::string &outfile);
         int heuristic_cost_estimate(int start, int dest);
         void choose_landmark_index(int src, int dest);
 
@@ -99,19 +99,20 @@ class ALT_Class
 
 std::map<int,std::vector<std::pair<int,int> > > graph;
 //after reading in coordinates will be 1-indexed
-std::vector<std::pair<int,int> > graph_coords;
+std::vector<std::pair<double,double> > graph_coords;
 std::vector<std::vector<int> > ALT_Class::land_dist;
 
 int main(int argc, char** argv){
-    if (argc < 3){
+    if (argc < 4){
         cout << "ABORTING: Not enough command line arguments\n";
-        cout << "Need Graph filename\n";
+        cout << "<distance_graph> <coordinates_graph> <outfile>\n";
         return 1;
     }
     // RoadMap graph used to find shortest path
     int node_count = 0;
     std::string file_name_arcs = argv[1];
     std::string file_name_coords = argv[2];
+    std::string outfile = argv[3];
     readInGraph(graph, node_count, file_name_arcs);
     readInGraphCoordinates(graph_coords, node_count, file_name_coords);
     // printMap(graph);
@@ -133,12 +134,12 @@ int main(int argc, char** argv){
         if (which_algos_char == '1' || which_algos_char == 'b')
         {
             cout << "Starting ALT algorithm" << endl;
-            alt_inst.alt_alg(graph_coords.size(), src, dest);
+            alt_inst.alt_alg(graph_coords.size(), src, dest, outfile);
         }
         if (which_algos_char == '2' || which_algos_char == 'b')
         {
             cout << "Starting Bi-Directional ALT algorithm" << endl;
-            alt_inst.bi_alt_alg(graph_coords.size(), src, dest);
+            alt_inst.bi_alt_alg(graph_coords.size(), src, dest, outfile);
         }
         cout << "Do you want to do another pair?\n";
         cout << "c to continue, q to quit:";
@@ -235,8 +236,15 @@ bool pair_comparator(std::pair<int, int> left, std::pair<int, int> right)
     return left.second >= right.second;
 }
 
-void ALT_Class::alt_alg(int node_count, int src, int dest)
+void ALT_Class::alt_alg(int node_count, int src, int dest, const std::string &outfile)
 {
+    // For writing to output file
+    std::ofstream output;
+    output.open(outfile);
+    output << "c Starting one directional ALT.\n";
+    // Output starting coordinate and destination coordinate
+    output << "s " << graph_coords[src].first << " " << graph_coords[src].second << endl;
+    output << "d " << graph_coords[dest].first << " " << graph_coords[dest].second << endl;
     // For timing purposes only
     typedef std::chrono::duration<int,std::milli> millisecs_t;
     std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
@@ -275,6 +283,7 @@ void ALT_Class::alt_alg(int node_count, int src, int dest)
             exit(1);
         }
         u = dist_node.top().first;
+        output << "u " << graph_coords[u].first << " " << graph_coords[u].second << endl;
         past_heuristic = dist_node.top().second;
         dist_node.pop();
         // Mark the picked vertex as visited
@@ -291,6 +300,7 @@ void ALT_Class::alt_alg(int node_count, int src, int dest)
                 visited[v.first] = false;
                 int heuristic = dist[v.first] + heuristic_cost_estimate(v.first, dest);
                 path_info[v.first] = u;
+                output << "a " << graph_coords[v.first].first << " " << graph_coords[v.first].second << endl;
                 dist_node.push(std::make_pair(v.first, heuristic));
             }
         }
@@ -300,6 +310,7 @@ void ALT_Class::alt_alg(int node_count, int src, int dest)
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     millisecs_t duration(std::chrono::duration_cast<millisecs_t>(end-start));
     std::cout << "That took: " << duration.count() << " milliseconds.\n";
+    output.close();
 }
 
 void ALT_Class::choose_landmark_index(int src, int dest)
@@ -349,8 +360,15 @@ int ALT_Class::heuristic_cost_estimate(int start, int dest)
     return max_heur;
 }
 
-void ALT_Class::bi_alt_alg(int node_count, int src, int dest)
+void ALT_Class::bi_alt_alg(int node_count, int src, int dest, const std::string &outfile)
 {
+    // For writing to output file
+    std::ofstream output;
+    output.open(outfile);
+    output << "c Starting bi-directional ALT.\n";
+    // Output starting coordinate and destination coordinate
+    output << "s " << graph_coords[src].first << " " << graph_coords[src].second << endl;
+    output << "d " << graph_coords[dest].first << " " << graph_coords[dest].second << endl;
     // For timing purposes only
     typedef std::chrono::duration<int,std::milli> millisecs_t;
     std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
@@ -441,6 +459,8 @@ void ALT_Class::bi_alt_alg(int node_count, int src, int dest)
             dest_dist_node.pop();
             dir = 1;
         }
+        // Output updated node we are searching from
+        output << "u " << graph_coords[u].first << " " << graph_coords[u].second << endl;
         // Mark the picked vertex as visited
         visited[dir][u] = true;
         // Combined distance could be lowered from this node
@@ -469,20 +489,18 @@ void ALT_Class::bi_alt_alg(int node_count, int src, int dest)
                 // something is marked visitied that it will stay visited
                 visited[dir][v.first] = false;
                 dist[dir][v.first] = dist[dir][u]+v.second;
+                path_info[dir][v.first] = u;
                 if (dir == 0){
                     heuristic[dir][v.first] = dist[dir][v.first] + heuristic_cost_estimate(v.first, dest);
+                    src_dist_node.push(std::make_pair(v.first, heuristic[dir][v.first]));
+                    // Output forward search
+                    output << "f " << graph_coords[v.first].first << " " << graph_coords[v.first].second << endl;
                 }
                 else{
                     heuristic[dir][v.first] = dist[dir][v.first] + heuristic_cost_estimate(v.first, src);
-                }
-                path_info[dir][v.first] = u;
-                // From SRC to Dest
-                if (dir == 0){
-                    src_dist_node.push(std::make_pair(v.first, heuristic[dir][v.first]));
-                }
-                // From dest to src
-                else{
                     dest_dist_node.push(std::make_pair(v.first, heuristic[dir][v.first]));
+                    // Output backward search
+                    output << "b " << graph_coords[v.first].first << " " << graph_coords[v.first].second << endl;
                 }
             }
         }
@@ -505,6 +523,7 @@ void ALT_Class::bi_alt_alg(int node_count, int src, int dest)
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     millisecs_t duration(std::chrono::duration_cast<millisecs_t>(end-start));
     std::cout << "That took: " << duration.count() << " milliseconds.\n";
+    output.close();
 }
 
 void dijkstra(std::map<int,std::vector<std::pair<int,int> > > &graph, 
@@ -626,7 +645,7 @@ void readInGraph(std::map<int,std::vector<std::pair<int,int> > > &graph,
     }
 }
 
-void readInGraphCoordinates(std::vector<std::pair<int, int> > &graph_coords, int &node_count,
+void readInGraphCoordinates(std::vector<std::pair<double, double> > &graph_coords, int &node_count,
                         const std::string &file_name)
 {
     cout << "Reading in graph from file: " << file_name << endl;
@@ -658,13 +677,14 @@ void readInGraphCoordinates(std::vector<std::pair<int, int> > &graph_coords, int
             // Arc info line (node1 node2 distance)
             else if (temp_char == 'v'){
                 node_count++;
-                int node_num, lng, lat;
+                int node_num;
+                double lng, lat;
                 infile >> node_num >> lng >> lat;
                 // node1 already exists in map so just insert next arc
 
                 // node1 doesn't exist in map so create it and add arc
-                std::pair <int,int> temp_pair;
-                temp_pair = std::make_pair(lng, lat);
+                std::pair <double,double> temp_pair;
+                temp_pair = std::make_pair(lng/1000000.0, lat/1000000.0);
                 graph_coords.push_back(temp_pair);
             }
             // Some unkown starting character
