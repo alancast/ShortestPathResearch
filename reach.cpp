@@ -63,6 +63,24 @@ void dijkstra(std::map<int,std::vector<std::pair<int,int> > > &graph,
                 std::vector<std::vector<int> >  &land_dist,
                 int node_count, int src, int dest);
 
+// Implements Dijkstra's single source shortest path algorithm
+// for a graph represented using adjacency matrix representation
+// Will be cut off after distances hit episolon
+// INPUTS: graph - unordered map with key of source node and value of
+//                 list of pairs in format (destination_node, arc distance)
+//         src - What node we are starting at and thus computing 
+//              shortest paths from
+//         node_count - row & column size of graph
+// MODIFIES: nothing
+// RETURNS: nothing
+void bounded_dijkstra(std::map<int,std::vector<std::pair<int,int> > > &graph, 
+                        int node_count, int src, int epsilon);
+
+// Implements Dijkstra's single source shortest path algorithm
+// specifically tailored for computing reaches
+void reach_dijkstra(int node_count, int src, int* distances,
+                    std::map<int, std::unordered_set<int> > &in_path_for);
+
 //reads in graph_coords, graph_coords will be 1-indexed first int is lng, 2nd is lat
 void readInGraphCoordinates(std::vector<std::pair<int, int> > &graph_coords, 
                             int &node_count, const std::string &file_name);
@@ -90,12 +108,15 @@ class ReachClass
 
     public:
         void get_landmarks(int k);
+        void compute_reaches();
+        void choose_landmark_index(int src, int dest);
         void print_landmarks();
         void alt_alg(int node_count, int src, int dest);
         void bi_alt_alg(int node_count, int src, int dest);
-        int heuristic_cost_estimate(int start, int dest);
-        void choose_landmark_index(int src, int dest);
 
+        int heuristic_cost_estimate(int start, int dest);
+        int find_reach_for_node(int* distances,
+                    std::map<int, std::unordered_set<int> > &in_path_for, int node);
 };
 
 std::map<int,std::vector<std::pair<int,int> > > graph;
@@ -117,9 +138,10 @@ int main(int argc, char** argv){
     readInGraphCoordinates(graph_coords, node_count, file_name_coords);
     // printMap(graph);
     // print_all_coords(graph_coords);
-    ReachClass alt_inst;
+    ReachClass reach_inst;
     // Pass in the number of landmarks you want to have
-    alt_inst.get_landmarks(4);
+    reach_inst.get_landmarks(4);
+    reach_inst.compute_reaches();
     int src, dest;
     char temp_char = 'c';
     while (temp_char == 'c'){
@@ -134,12 +156,12 @@ int main(int argc, char** argv){
         if (which_algos_char == '1' || which_algos_char == 'b')
         {
             cout << "Starting ALT algorithm" << endl;
-            alt_inst.alt_alg(graph_coords.size(), src, dest);
+            reach_inst.alt_alg(graph_coords.size(), src, dest);
         }
         if (which_algos_char == '2' || which_algos_char == 'b')
         {
             cout << "Starting Bi-Directional ALT algorithm" << endl;
-            alt_inst.bi_alt_alg(graph_coords.size(), src, dest);
+            reach_inst.bi_alt_alg(graph_coords.size(), src, dest);
         }
         cout << "Do you want to do another pair?\n";
         cout << "c to continue, q to quit:";
@@ -154,6 +176,129 @@ void ReachClass::print_landmarks()
     for (std::unordered_set<int>::iterator it = landmarks.begin(); it != landmarks.end(); it++)
     {
         cout << *it << endl;
+    }
+}
+
+void ReachClass::compute_reaches()
+{
+    int num_nodes = graph_coords.size();
+    // Initialize all reaches to -1
+    reaches = new int[num_nodes+1];
+    int* distances = new int[num_nodes+1];
+    std::map<int, std::unordered_set<int> > in_path_for;
+    for (int i = 0; i < num_nodes+1; ++i){
+        reaches[i] = -1, distances[i] = INT_MAX;
+    }
+    // Find shortest path to all nodes from every node
+    for (int i = 1; i < num_nodes+1; ++i){
+        cout << "Finding shortest paths for node " << i << endl;
+        reach_dijkstra(num_nodes, i, distances, in_path_for);
+        for (int j = 1; j < num_nodes+1; ++j){
+            int temp_reach = find_reach_for_node(distances, in_path_for, j);
+            if (temp_reach > reaches[j]){
+                reaches[j] = temp_reach;
+            }
+        }
+        in_path_for.clear();
+    }
+}
+
+int ReachClass::find_reach_for_node(int* distances,
+                    std::map<int, std::unordered_set<int> > &in_path_for, int node)
+{
+    if (in_path_for.find(node) == in_path_for.end()){
+        return 0;
+    }
+    int max_reach = 0;
+    for (std::unordered_set<int>::iterator it = in_path_for[node].begin(); 
+        it != in_path_for[node].end(); it++){
+        int other_node = *it;
+        int left_side = distances[node];
+        int right_side = distances[other_node] - distances[node];
+        // Find max of mins
+        if (left_side < right_side && left_side > max_reach){
+            max_reach = left_side;
+        }
+        else if (right_side < left_side && right_side > max_reach){
+            max_reach = right_side;
+        }
+    }
+    return max_reach;
+}
+
+void reach_dijkstra(int node_count, int src, int* distances,
+                    std::map<int, std::unordered_set<int> > &in_path_for)
+{
+    // Distance priority queue. dist_node[0] will hold the node with the minimum distance
+    std::priority_queue<std::pair<int,int>, 
+            std::vector<std::pair<int, int> >, 
+            std::function<bool(std::pair<int,int>, std::pair<int,int>)> > dist_node(pair_comparator);
+    dist_node.push(std::make_pair(src, 0));
+    // Distance array. dist[i] will hold the shortest distance from src to i
+    int *dist = new int[node_count+1];
+    // How you got to that node array. path_info[i] will hold what node got us to i
+    int *path_info = new int[node_count+1];
+    // visited[i] will be true if we have already computed the shortest path to it
+    bool *visited = new bool[node_count+1];
+    // Initialize all distances as INFINITE and visited[] as false
+    for (int i = 0; i < node_count+1; i++){
+        dist[i] = INT_MAX, visited[i] = false, path_info[i] = -1;
+    }
+    // Distance of source vertex from itself is always 0
+    dist[src] = 0;
+    path_info[src] = src;
+    int u = 0;
+    int previous_dist = 0;
+    // Find shortest path to the destination vertex
+    while (!dist_node.empty()){
+        // Pick the minimum distance vertex not visited
+        while (!dist_node.empty() && visited[dist_node.top().first]){
+            dist_node.pop();
+        }
+        u = dist_node.top().first;
+        previous_dist = dist_node.top().second;
+        dist_node.pop();
+        // Mark the picked vertex as visited
+        visited[u] = true;
+        // Update dist value of the adjacent vertices of the picked vertex.
+        for (int i = 0; i < graph[u].size(); ++i)
+        {
+            std::pair<int, int> v = graph[u][i];
+            // Update dist[v.first] only if there is an edge from 
+            // u to v, and total weight of path from src to   
+            // v through u is smaller than current value of dist[v]
+            if (dist[u]+v.second < dist[v.first]){
+                dist[v.first] = dist[u]+v.second;
+                path_info[v.first] = u;
+                dist_node.push(std::make_pair(v.first, dist[v.first]));
+            }
+        }
+    }
+    // Update in_path_for here
+    // Go through all nodes
+    cout << "Updating in_path_for_set" << endl;
+    for (int i = 1; i < node_count+1; ++i)
+    {
+        // Track backwards path info to find all nodes that were in this path
+        int path_finder = i;
+        cout << i << endl;
+        while (path_info[path_finder] != src){
+            // Set currently doesn't exist
+            if (in_path_for.find(path_finder) == in_path_for.end()){
+                std::unordered_set<int> temp_set;
+                temp_set.insert(i);
+                in_path_for[path_finder] = temp_set;
+            }
+            else{
+                in_path_for[path_finder].insert(i);
+            }
+            path_finder = path_info[path_finder];
+        }
+    }
+    // Update distances
+    for (int i = 0; i < node_count+1; ++i)
+    {
+        distances[i] = dist[i];
     }
 }
 
@@ -506,6 +651,55 @@ void ReachClass::bi_alt_alg(int node_count, int src, int dest)
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     millisecs_t duration(std::chrono::duration_cast<millisecs_t>(end-start));
     std::cout << "That took: " << duration.count() << " milliseconds.\n";
+}
+
+void bounded_dijkstra(std::map<int,std::vector<std::pair<int,int> > > &graph, 
+                        int node_count, int src, int epsilon)
+{
+    // Distance priority queue. dist_node[0] will hold the node with the minimum distance
+    std::priority_queue<std::pair<int,int>, 
+            std::vector<std::pair<int, int> >, 
+            std::function<bool(std::pair<int,int>, std::pair<int,int>)> > dist_node(pair_comparator);
+    dist_node.push(std::make_pair(src, 0));
+    // Distance array. dist[i] will hold the shortest distance from src to i
+    int *dist = new int[node_count+1];
+    // How you got to that node array. path_info[i] will hold what node got us to i
+    int *path_info = new int[node_count+1];
+    // visited[i] will be true if we have already computed the shortest path to it
+    bool *visited = new bool[node_count+1];
+    // Initialize all distances as INFINITE and visited[] as false
+    for (int i = 0; i < node_count+1; i++){
+        dist[i] = INT_MAX, visited[i] = false, path_info[i] = -1;
+    }
+    // Distance of source vertex from itself is always 0
+    dist[src] = 0;
+    int u = 0;
+    int previous_dist = 0;
+    // Find shortest path to the destination vertex
+    while (previous_dist < epsilon){
+        // Pick the minimum distance vertex not visited
+        while (!dist_node.empty() && visited[dist_node.top().first]){
+            dist_node.pop();
+        }
+        u = dist_node.top().first;
+        previous_dist = dist_node.top().second;
+        dist_node.pop();
+        // Mark the picked vertex as visited
+        visited[u] = true;
+        // Update dist value of the adjacent vertices of the picked vertex.
+        for (int i = 0; i < graph[u].size(); ++i)
+        {
+            std::pair<int, int> v = graph[u][i];
+            // Update dist[v.first] only if there is an edge from 
+            // u to v, and total weight of path from src to   
+            // v through u is smaller than current value of dist[v]
+            if (dist[u]+v.second < dist[v.first]){
+                dist[v.first] = dist[u]+v.second;
+                path_info[v.first] = u;
+                dist_node.push(std::make_pair(v.first, dist[v.first]));
+            }
+        }
+    }
 }
 
 void dijkstra(std::map<int,std::vector<std::pair<int,int> > > &graph, 
