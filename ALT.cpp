@@ -41,7 +41,8 @@ void printMap(std::map<int,std::vector<std::pair<int,int> > > &graph);
 //         path_info = array of how each node was gotten to
 // MODIFIES: nothing
 // RETURNS: nothing
-void printSolution(int src, int dest, int distance, int *path_info);
+void printSolution(int src, int dest, int distance, int *path_info,
+                    const std::string &outfile);
 
 // Custom comparator for priority queue
 // INPUTS: left - pair of (node, dist) of left part
@@ -305,12 +306,12 @@ void ALT_Class::alt_alg(int node_count, int src, int dest, const std::string &ou
             }
         }
     }
-    printSolution(src, dest, dist[dest], path_info);
+    output.close();
+    printSolution(src, dest, dist[dest], path_info, outfile);
     // Again for timing purposes only
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     millisecs_t duration(std::chrono::duration_cast<millisecs_t>(end-start));
     std::cout << "That took: " << duration.count() << " milliseconds.\n";
-    output.close();
 }
 
 void ALT_Class::choose_landmark_index(int src, int dest)
@@ -518,12 +519,12 @@ void ALT_Class::bi_alt_alg(int node_count, int src, int dest, const std::string 
         final_path_info[path_info[1][path_finder]] = path_finder;
         path_finder = path_info[1][path_finder];
     }
-    printSolution(src, dest, combined_dist, final_path_info);
+    output.close();
+    printSolution(src, dest, combined_dist, final_path_info, outfile);
     // Again for timing purposes only
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     millisecs_t duration(std::chrono::duration_cast<millisecs_t>(end-start));
     std::cout << "That took: " << duration.count() << " milliseconds.\n";
-    output.close();
 }
 
 void dijkstra(std::map<int,std::vector<std::pair<int,int> > > &graph, 
@@ -576,7 +577,7 @@ void dijkstra(std::map<int,std::vector<std::pair<int,int> > > &graph,
             }
         }
     }
-    printSolution(src, dest, dist[dest], path_info);
+    printSolution(src, dest, dist[dest], path_info, "ignore.txt");
     std::vector<int> temp_land_vector;
     for(int i = 0; i < node_count + 1; ++i)
     {
@@ -726,7 +727,8 @@ void print_all_coords(std::vector<std::pair<int,int> > &graph_coords)
     }
 }
 
-void printSolution(int src, int dest, int distance, int *path_info)
+void printSolution(int src, int dest, int distance, int *path_info,
+                    const std::string &outfile)
 {
     // Print the shortest path from src to dest
     cout << "The shortest path from node " << src << " to node " << dest;
@@ -738,4 +740,18 @@ void printSolution(int src, int dest, int distance, int *path_info)
     //     path_finder = path_info[path_finder];
     // }
     // cout << src << endl;
+    std::ofstream output;
+    output.open(outfile, std::ios::app);
+    output << "c Starting output of actual shortest path (from dest to source).\n";
+    // Output destination node
+    output << "n " << dest << endl;
+    int path_finder = dest;
+    // Output all path nodes
+    while (path_info[path_finder] != src){
+        output << "n " << path_info[path_finder] << endl;
+        path_finder = path_info[path_finder];
+    }
+    // Output source node
+    output << "n " << src << endl;
+    output.close();
 }
