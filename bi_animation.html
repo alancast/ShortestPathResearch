@@ -90,6 +90,7 @@
             var latestF;
             var latestB;
             var FEnd = true;
+            var end = false;
 
             function testLoop () {           //  create a loop function
                setTimeout(function () {    //  call a 3s setTimeout when the loop is called
@@ -103,11 +104,35 @@
                   i++;                     //  increment the counter
                   var temp = lines[i].split(/[ ,]+/);
                   console.log(temp)
-                  while (String(temp[0])=="u"){
+                  while (String(temp[0])=="u" && end == false){
                     latestU = temp;
                     i++;
                     temp = lines[i].split(/[ ,]+/);
+                    if (String(temp[0])=="c"){
+                      end = true;
+                    }
                   }
+
+                  if (end){
+                    while (i<lines.length){
+                      temp = lines[i].split(/[ ,]+/);
+
+
+                      path = [{lng: Number(latestU[1]), lat: Number(latestU[2])},{lng: Number(latestF[1]), lat: Number(latestF[2])}];
+                      var flightPath = new google.maps.Polyline({
+                        path: path,
+                        geodesic: true,
+                        strokeColor: '#3498db',
+                        strokeOpacity: 1.0,
+                        strokeWeight: 5
+                      }); 
+                      flightPath.setMap(map);
+
+                      i++;
+                    }
+                    break;
+                  }
+
                   if (String(temp[0])=="b"){
                     latestB = temp;
                     FEnd = false;
@@ -123,27 +148,29 @@
 
                   // console.log(latestA, latestU);
                   //9b59b6
-                  var path;
-                  if (FEnd){
-                    path = [{lng: Number(latestU[1]), lat: Number(latestU[2])},{lng: Number(latestF[1]), lat: Number(latestF[2])}];
-                    var flightPath = new google.maps.Polyline({
-                    path: path,
-                    geodesic: true,
-                    strokeColor: '#3498db',
-                    strokeOpacity: 1.0,
-                    strokeWeight: 2
-                    }); 
-                    flightPath.setMap(map);
-                  } else{
-                    path = [{lng: Number(latestU[1]), lat: Number(latestU[2])},{lng: Number(latestB[1]), lat: Number(latestB[2])}];
-                    var flightPath = new google.maps.Polyline({
-                    path: path,
-                    geodesic: true,
-                    strokeColor: '#9b59b6',
-                    strokeOpacity: 1.0,
-                    strokeWeight: 2
-                    }); 
-                    flightPath.setMap(map);
+                  if (end == false){
+                    var path;
+                    if (FEnd ){
+                      path = [{lng: Number(latestU[1]), lat: Number(latestU[2])},{lng: Number(latestF[1]), lat: Number(latestF[2])}];
+                      var flightPath = new google.maps.Polyline({
+                      path: path,
+                      geodesic: true,
+                      strokeColor: '#3498db',
+                      strokeOpacity: 1.0,
+                      strokeWeight: 2
+                      }); 
+                      flightPath.setMap(map);
+                    } else{
+                      path = [{lng: Number(latestU[1]), lat: Number(latestU[2])},{lng: Number(latestB[1]), lat: Number(latestB[2])}];
+                      var flightPath = new google.maps.Polyline({
+                      path: path,
+                      geodesic: true,
+                      strokeColor: '#9b59b6',
+                      strokeOpacity: 1.0,
+                      strokeWeight: 2
+                      }); 
+                      flightPath.setMap(map);
+                    }
                   }
 
                   console.log(path);
