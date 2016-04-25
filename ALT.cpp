@@ -744,14 +744,15 @@ void printSolution(int src, int dest, int distance, int *path_info,
     output.open(outfile, std::ios::app);
     output << "c Starting output of actual shortest path (from dest to source).\n";
     // Output destination node
-    output << "n " << dest << endl;
+    output << "n " << graph_coords[dest].first << " " << graph_coords[dest].second << endl;
     int path_finder = dest;
     // Output all path nodes
     while (path_info[path_finder] != src){
-        output << "n " << path_info[path_finder] << endl;
+        int node_num = path_info[path_finder];
+        output << "n " << graph_coords[node_num].first << " " << graph_coords[node_num].second << endl;
         path_finder = path_info[path_finder];
     }
     // Output source node
-    output << "n " << src << endl;
+    output << "n " << graph_coords[src].first << " " << graph_coords[src].second << endl;
     output.close();
 }
