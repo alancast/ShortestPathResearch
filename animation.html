@@ -83,35 +83,65 @@
             // By lines
             var lines = this.result.split('\n');
 
-            var i = 2;                     //  set your counter to 1
+            
 
-            function myLoop () {           //  create a loop function
+            var i = 4;    
+            var latestU =  lines[i-1].split(/[ ,]+/);
+            var latestA =  lines[i].split(/[ ,]+/);
+
+            function testLoop () {           //  create a loop function
                setTimeout(function () {    //  call a 3s setTimeout when the loop is called
-                  var past = lines[i-1].split(/[ ,]+/);
-                  var present = lines[i].split(/[ ,]+/);
-                  var path = [{lng: Number(past[1]), lat: Number(past[2])},{lng: Number(present[1]), lat: Number(present[2])}];
+                  
+                  var path = [{lng: Number(latestU[1]), lat: Number(latestU[2])},{lng: Number(latestA[1]), lat: Number(latestA[2])}];
                   console.log(path);
+
+
                   var flightPath = new google.maps.Polyline({
                     path: path,
                     geodesic: true,
-                    strokeColor: '#FF00F0',
+                    strokeColor: '#3498db',
                     strokeOpacity: 1.0,
                     strokeWeight: 2
                     }); 
-                  flightPath.setMap(map)
+                  flightPath.setMap(map);
 
 
 
 
-                          //  your code here
+                
                   i++;                     //  increment the counter
-                  if (i < 100) {            //  if the counter < 10, call the loop function
-                     myLoop();             //  ..  again which will trigger another 
+                  var temp = lines[i].split(/[ ,]+/);
+                  while (String(temp[0])!="a"){
+                    latestU = temp;
+                    i++;
+                    temp = lines[i].split(/[ ,]+/);
+                  }
+                  latestA = temp;
+
+                  console.log(latestA, latestU);
+
+
+                  if (i < lines.length) {            //  if the counter < 10, call the loop function
+                     testLoop();             //  ..  again which will trigger another 
                   }                        //  ..  setTimeout()
-               }, 100)
+               }, 0)
             }
 
-            myLoop(); 
+            testLoop(); 
+
+
+            var pastI = lines[1].split(/[ ,]+/);
+            var presentI = lines[2].split(/[ ,]+/);
+            var pathI = [{lng: Number(pastI[1]), lat: Number(pastI[2])},{lng: Number(presentI[1]), lat: Number(presentI[2])}];
+
+            var flightPath = new google.maps.Polyline({
+                    path: pathI,
+                    geodesic: true,
+                    strokeColor: '#c0392b',
+                    strokeOpacity: 1.0,
+                    strokeWeight: 2
+                    }); 
+            flightPath.setMap(map)
             
             // for(var line = 0; line < lines.length; line++){
             //   if (line > 1){
