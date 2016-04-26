@@ -120,7 +120,7 @@ int main(int argc, char** argv){
     // print_all_coords(graph_coords);
     ALT_Class alt_inst;
     // Pass in the number of landmarks you want to have
-    alt_inst.get_landmarks(4);
+    alt_inst.get_landmarks(8);
     int src, dest;
     char temp_char = 'c';
     while (temp_char == 'c'){
@@ -194,7 +194,7 @@ void ALT_Class::get_landmarks(int k)
                 }
                 // Potential thing to toy around with, if this node is 
                 // Within x distance to any other landmarks ignore it
-                if (new_dist < 1500000){
+                if (new_dist < 500000){
                     continue;
                 }
                 total_dist += new_dist;
