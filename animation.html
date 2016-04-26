@@ -24,11 +24,11 @@
       // This example creates a 2-pixel-wide red polyline showing the path of William
       // Kingsford Smith's first trans-Pacific flight between Oakland, CA, and
       // Brisbane, Australia.
-
+// 
       function initMap() {
         var map = new google.maps.Map(document.getElementById('map'), {
-          zoom: 11,
-          center: {lat: 37.6089, lng: -121.746},
+          zoom: 12,
+          center: {lat: (37.7155 + 37.8085)/2, lng: (-121.741 + -121.994)/2},
           mapTypeId: google.maps.MapTypeId.ROADMAP
         });
 
@@ -104,6 +104,9 @@
                   i++;                     //  increment the counter
                   var temp = lines[i].split(/[ ,]+/);
                   console.log(temp)
+                  if (String(temp[0])=="c"){
+                      end = true;
+                  }
                   while (String(temp[0])=="u" && end == false){
                     latestU = temp;
                     i++;
